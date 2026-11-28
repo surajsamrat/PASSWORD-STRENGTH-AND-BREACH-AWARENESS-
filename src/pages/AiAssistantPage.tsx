@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Bot,
   Eraser,
+  Languages,
   Loader2,
   Lock,
   Send,
@@ -20,6 +21,7 @@ import {
   type AssistantHealthStatus,
 } from "@/lib/security/aiAssistantClient";
 import { generateLocalSecurityReply } from "@/lib/security/assistantEngine";
+import type { Language } from "@/types/security";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,6 +80,7 @@ const STARTER_PROMPTS = {
 export const AiAssistantPage: React.FC = () => {
   const { t, language, sessionSnapshot, hygiene } = useApp();
 
+  const [aiLanguage, setAiLanguage] = useState<Language>(language);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,6 +93,11 @@ export const AiAssistantPage: React.FC = () => {
   const [health, setHealth] = useState<AssistantHealthStatus | null>(null);
   const [healthChecked, setHealthChecked] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync AI default language when user switches app language
+  useEffect(() => {
+    setAiLanguage(language);
+  }, [language]);
 
   // Clear volatile chat history and draft input when leaving the page
   useEffect(() => {
@@ -121,8 +129,13 @@ export const AiAssistantPage: React.FC = () => {
     [sessionSnapshot, hygiene]
   );
 
+  const resolveLocalizedError = (code: string, fallbackMessage: string): string => {
+    const map = t.errors as Record<string, string>;
+    return map[code] || fallbackMessage || t.errors.UNKNOWN_ERROR;
+  };
+
   const handleUseOfflinePlaybook = (queryText: string) => {
-    const reply = generateLocalSecurityReply(queryText, language);
+    const reply = generateLocalSecurityReply(queryText, aiLanguage);
     setErrorState(null);
     setMessages((prev) => {
       const alreadyHasUser =
@@ -168,7 +181,7 @@ export const AiAssistantPage: React.FC = () => {
     try {
       const reply = await sendAssistantMessage({
         message: trimmed,
-        language,
+        language: aiLanguage,
         history: nextHistory,
         metadata: includeMetadata ? nonSensitiveMetadata : undefined,
       });
@@ -186,13 +199,13 @@ export const AiAssistantPage: React.FC = () => {
       if (err instanceof AiAssistantClientError) {
         setErrorState({
           code: err.code,
-          message: err.message,
+          message: resolveLocalizedError(err.code, err.message),
           lastQuery: err.code === "CLIENT_PRIVACY_BLOCK" ? undefined : trimmed,
         });
       } else {
         setErrorState({
           code: "UNKNOWN_ERROR",
-          message: "Unexpected error communicating with the AI security assistant.",
+          message: t.errors.UNKNOWN_ERROR,
           lastQuery: trimmed,
         });
       }
@@ -202,7 +215,7 @@ export const AiAssistantPage: React.FC = () => {
   };
 
   const statusBadge = !healthChecked ? (
-    <Badge variant="secondary">Checking server...</Badge>
+    <Badge variant="secondary">{t.assistant.checkingServer}</Badge>
   ) : health?.providerConfigured ? (
     <Badge variant="emerald">
       <Sparkles className="h-3 w-3" />
@@ -227,20 +240,48 @@ export const AiAssistantPage: React.FC = () => {
         subtitle={t.assistant.subtitle}
         badge={statusBadge}
         actions={
-          messages.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setMessages([]);
-                setErrorState(null);
-              }}
-            >
-              <Eraser className="h-4 w-4" />
-              {t.assistant.clearChat}
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Explicit AI Assistant Response Language Selection */}
+            <div className="flex items-center gap-1 rounded-lg border border-border/80 bg-card/70 p-1">
+              <Languages className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 ml-1.5 mr-1" />
+              <span className="text-[11px] text-muted-foreground mr-1 hidden sm:inline">
+                {t.assistant.responseLangLabel}:
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={aiLanguage === "en" ? "default" : "ghost"}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setAiLanguage("en")}
+              >
+                {t.common.english}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={aiLanguage === "hi" ? "default" : "ghost"}
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setAiLanguage("hi")}
+              >
+                {t.common.hindi}
+              </Button>
+            </div>
+
+            {messages.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setMessages([]);
+                  setErrorState(null);
+                }}
+              >
+                <Eraser className="h-4 w-4" />
+                {t.assistant.clearChat}
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -270,7 +311,7 @@ export const AiAssistantPage: React.FC = () => {
         <CardContent className="flex-1 overflow-y-auto p-5 space-y-4">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-5 px-2">
-              <div className="h-12 w-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+              <div className="h-12 w-12 rounded-2xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400">
                 <Bot className="h-6 w-6" />
               </div>
               <div className="space-y-1 max-w-lg">
@@ -280,7 +321,7 @@ export const AiAssistantPage: React.FC = () => {
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl">
-                {STARTER_PROMPTS[language].map((prompt) => (
+                {STARTER_PROMPTS[aiLanguage].map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
@@ -304,7 +345,7 @@ export const AiAssistantPage: React.FC = () => {
                 >
                   {msg.sender === "assistant" && (
                     <div className="h-8 w-8 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0 mt-1">
-                      <Bot className="h-4 w-4 text-sky-400" />
+                      <Bot className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                     </div>
                   )}
 
@@ -337,7 +378,7 @@ export const AiAssistantPage: React.FC = () => {
 
                   {msg.sender === "user" && (
                     <div className="h-8 w-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-1">
-                      <User className="h-4 w-4 text-emerald-400" />
+                      <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     </div>
                   )}
                 </div>
@@ -346,10 +387,10 @@ export const AiAssistantPage: React.FC = () => {
               {loading && (
                 <div className="flex gap-3 justify-start" aria-live="polite">
                   <div className="h-8 w-8 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center shrink-0">
-                    <Loader2 className="h-4 w-4 text-sky-400 animate-spin" />
+                    <Loader2 className="h-4 w-4 text-sky-600 dark:text-sky-400 animate-spin" />
                   </div>
                   <div className="rounded-2xl px-4 py-3 text-xs sm:text-sm bg-secondary/60 border border-border/80 text-muted-foreground flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <span>{t.assistant.thinking}</span>
                   </div>
                 </div>
@@ -360,7 +401,7 @@ export const AiAssistantPage: React.FC = () => {
                   role="alert"
                   className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2.5 text-xs sm:text-sm"
                 >
-                  <div className="flex items-center gap-2 font-bold text-amber-500">
+                  <div className="flex items-center gap-2 font-bold text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{errorState.code}</span>
                   </div>

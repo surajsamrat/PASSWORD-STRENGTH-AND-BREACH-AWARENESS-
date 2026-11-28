@@ -1,4 +1,10 @@
-import type { PhishingAnalysisResult, PhishingIndicator, RiskLevel } from "@/types/security";
+import type {
+  PhishingAnalysisResult,
+  PhishingDetectionSummary,
+  PhishingIndicator,
+  RiskLevel,
+  UrlAnatomy,
+} from "@/types/security";
 
 const SUSPICIOUS_TLDS = new Set([
   "zip",
@@ -17,6 +23,8 @@ const SUSPICIOUS_TLDS = new Set([
   "buzz",
   "cam",
   "icu",
+  "shop",
+  "quest",
 ]);
 
 const URL_SHORTENERS = new Set([
@@ -29,6 +37,11 @@ const URL_SHORTENERS = new Set([
   "is.gd",
   "buff.ly",
   "cutt.ly",
+  "shorturl.at",
+  "rebrand.ly",
+  "lnkd.in",
+  "tiny.cc",
+  "s.id",
 ]);
 
 const HIGH_TARGET_BRANDS = [
@@ -49,6 +62,18 @@ const HIGH_TARGET_BRANDS = [
   "axisbank.com",
 ];
 
+const TWO_PART_PUBLIC_SUFFIXES = new Set([
+  "co.in",
+  "co.uk",
+  "org.in",
+  "net.in",
+  "gov.in",
+  "ac.in",
+  "com.au",
+  "co.jp",
+  "org.uk",
+]);
+
 const URL_SENSITIVE_TERMS = [
   "login",
   "signin",
@@ -57,6 +82,7 @@ const URL_SENSITIVE_TERMS = [
   "update",
   "kyc",
   "suspend",
+  "suspended",
   "locked",
   "unlock",
   "confirm",
@@ -65,7 +91,12 @@ const URL_SENSITIVE_TERMS = [
   "otp",
   "password",
   "secure-account",
+  "billing",
+  "refund",
+  "urgent",
 ];
+
+const DANGEROUS_SCHEMES = new Set(["javascript:", "data:", "vbscript:", "file:"]);
 
 const PHISHING_TEXT_PATTERNS: Array<{
   id: string;
@@ -134,179 +165,385 @@ function extractUrls(text: string): string[] {
   return Array.from(new Set(matches.map((u) => u.replace(/[.,;!?)]+$/, ""))));
 }
 
-function inspectSingleUrl(rawUrl: string, indicators: PhishingIndicator[]) {
-  let normalized = rawUrl.trim();
-  if (!/^https?:\/\//i.test(normalized) && /^[a-z0-9.-]+\.[a-z]{2,}/i.test(normalized)) {
-    normalized = `https://${normalized}`;
+function isIpLiteralHost(host: string): boolean {
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) return true;
+  if (host.startsWith("[") && host.endsWith("]")) return true;
+  // Obfuscated integer / hex / octal IP representations (e.g. 2130706433 or 0x7f.0.0.1)
+  if (/^\d+$/.test(host)) return true;
+  if (/^(0x[0-9a-f]+|0[0-7]+|\d+)(\.(0x[0-9a-f]+|0[0-7]+|\d+)){1,3}$/i.test(host)) {
+    return true;
+  }
+  return false;
+}
+
+function splitDomainParts(host: string): { subdomains: string; rootDomain: string } {
+  if (isIpLiteralHost(host)) {
+    return { subdomains: "", rootDomain: host };
+  }
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length <= 2) {
+    return { subdomains: "", rootDomain: host };
+  }
+  const lastTwo = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+  const rootLen = TWO_PART_PUBLIC_SUFFIXES.has(lastTwo) && parts.length >= 3 ? 3 : 2;
+  const rootDomain = parts.slice(-rootLen).join(".");
+  const subdomains = parts.slice(0, parts.length - rootLen).join(".");
+  return { subdomains, rootDomain };
+}
+
+export interface UrlValidationOutcome {
+  valid: boolean;
+  parsed?: URL;
+  errorEn?: string;
+  errorHi?: string;
+  unsafeScheme?: string;
+}
+
+/**
+ * Validates URL syntax strictly without making any network connection.
+ */
+export function validateUrlSyntax(rawUrl: string): UrlValidationOutcome {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return { valid: false, errorEn: "URL is empty.", errorHi: "URL खाली है।" };
+  }
+  if (/\s/.test(trimmed)) {
+    return {
+      valid: false,
+      errorEn: "Invalid URL syntax: URLs cannot contain spaces or line breaks.",
+      errorHi: "अमान्य URL सिंटैक्स: URL में रिक्त स्थान (Space) नहीं हो सकते।",
+    };
+  }
+
+  const lower = trimmed.toLowerCase();
+  for (const scheme of DANGEROUS_SCHEMES) {
+    if (lower.startsWith(scheme)) {
+      return {
+        valid: false,
+        unsafeScheme: scheme.replace(":", ""),
+        errorEn: `Dangerous non-web scheme (${scheme}) detected—can execute scripts or local payloads.`,
+        errorHi: `खतरनाक स्कीम (${scheme}) मिली—यह स्क्रिप्ट या हानिकारक पेलोड चला सकती है।`,
+      };
+    }
+  }
+
+  let candidate = trimmed;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(candidate)) {
+    if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[:/?#]|$)/i.test(candidate)) {
+      candidate = `https://${candidate}`;
+    } else {
+      return {
+        valid: false,
+        errorEn: "Invalid URL syntax: enter a complete web URL (e.g., https://example.com).",
+        errorHi: "अमान्य URL सिंटैक्स: कृपया पूरा वेब पता दर्ज करें (जैसे https://example.com)।",
+      };
+    }
   }
 
   let parsed: URL;
   try {
-    parsed = new URL(normalized);
+    parsed = new URL(candidate);
   } catch {
-    indicators.push({
-      id: "malformed-url",
-      severity: "medium",
-      category: "url",
-      titleEn: "Malformed or obfuscated URL syntax",
-      titleHi: "अमान्य या संदिग्ध URL संरचना",
-      detailEn: "The submitted link could not be parsed cleanly as a standard web URL.",
-      detailHi: "दिया गया लिंक मानक वेब URL के रूप में सही ढंग से पार्स नहीं हो सका।",
-      weight: 18,
-    });
-    return { host: undefined, protocol: undefined };
+    return {
+      valid: false,
+      errorEn: "Malformed URL: could not be parsed according to RFC 3986.",
+      errorHi: "विकृत URL: मानक वेब URL संरचना के अनुसार पार्स नहीं हो सका।",
+    };
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return {
+      valid: false,
+      unsafeScheme: parsed.protocol.replace(":", ""),
+      errorEn: `Unsupported protocol (${parsed.protocol})—only HTTP/HTTPS web URLs are valid.`,
+      errorHi: `असमर्थित प्रोटोकॉल (${parsed.protocol})—केवल HTTP/HTTPS मान्य हैं।`,
+    };
   }
 
   const host = parsed.hostname.toLowerCase();
+  if (!host || (!isIpLiteralHost(host) && !host.includes("."))) {
+    return {
+      valid: false,
+      errorEn: "Invalid hostname: missing top-level domain.",
+      errorHi: "अमान्य होस्टनेम: टॉप-लेवल डोमेन (जैसे .com) अनुपस्थित है।",
+    };
+  }
+
+  return { valid: true, parsed };
+}
+
+function inspectSingleUrl(
+  rawUrl: string,
+  indicators: PhishingIndicator[],
+  summary: PhishingDetectionSummary
+): {
+  valid: boolean;
+  errorEn?: string;
+  errorHi?: string;
+  host?: string;
+  protocol?: string;
+  anatomy?: UrlAnatomy;
+} {
+  const validation = validateUrlSyntax(rawUrl);
+  if (!validation.valid || !validation.parsed) {
+    if (validation.unsafeScheme) {
+      summary.hasUnsafeProtocol = true;
+    }
+    indicators.push({
+      id: validation.unsafeScheme ? "unsafe-scheme" : "malformed-url",
+      severity: validation.unsafeScheme ? "high" : "medium",
+      category: "syntax",
+      titleEn: validation.unsafeScheme
+        ? `Unsafe URI scheme (${validation.unsafeScheme}:)`
+        : "Malformed or invalid URL syntax",
+      titleHi: validation.unsafeScheme
+        ? `असुरक्षित URI स्कीम (${validation.unsafeScheme}:)`
+        : "अमान्य या संदिग्ध URL संरचना",
+      detailEn: validation.errorEn || "Submitted URL failed syntax validation.",
+      detailHi: validation.errorHi || "दिया गया URL सिंटैक्स जांच में विफल रहा।",
+      weight: validation.unsafeScheme ? 45 : 22,
+    });
+    return { valid: false, errorEn: validation.errorEn, errorHi: validation.errorHi };
+  }
+
+  const parsed = validation.parsed;
+  const host = parsed.hostname.toLowerCase();
   const protocol = parsed.protocol.replace(":", "");
+  const { subdomains, rootDomain } = splitDomainParts(host);
+
+  const anatomy: UrlAnatomy = {
+    protocol,
+    subdomains,
+    rootDomain,
+    port: parsed.port || "",
+    pathAndQuery: `${parsed.pathname}${parsed.search}${parsed.hash}`,
+  };
 
   if (protocol === "http") {
+    summary.hasUnsafeProtocol = true;
     indicators.push({
       id: "insecure-http",
       severity: "medium",
       category: "protocol",
       titleEn: "Unencrypted HTTP connection (no TLS/HTTPS)",
       titleHi: "असुरक्षित HTTP कनेक्शन (HTTPS एन्क्रिप्शन नहीं)",
-      detailEn: "Credentials or data entered over plain HTTP can be intercepted in transit.",
-      detailHi: "साधारण HTTP पर दर्ज डेटा या पासवर्ड नेटवर्क पर पढ़ा जा सकता है।",
+      detailEn:
+        "Traffic over plain HTTP is unencrypted and can be intercepted or modified in transit.",
+      detailHi: "साधारण HTTP पर भेजा गया डेटा एन्क्रिप्टेड नहीं होता और रास्ते में पढ़ा जा सकता है।",
       weight: 18,
     });
   }
 
   if (parsed.username || parsed.password || rawUrl.includes("@")) {
+    summary.hasSuspiciousDomainPattern = true;
     indicators.push({
       id: "at-symbol-obfuscation",
       severity: "high",
-      category: "url",
-      titleEn: "Contains '@' credential redirection trick",
+      category: "domain",
+      titleEn: "Contains '@' authority redirection trick",
       titleHi: "URL में '@' रीडायरेक्शन ट्रिक मिली",
-      detailEn: "Browsers ignore text before '@' in authority segments, misleading users about the true destination host.",
-      detailHi: "ब्राउज़र '@' से पहले लिखे पते को अनदेखा कर देते हैं, जिससे असली डोमेन छिप जाता है।",
-      weight: 32,
+      detailEn:
+        "Browsers treat text before '@' as credentials and actually connect to the domain after '@', hiding the real destination.",
+      detailHi: "ब्राउज़र '@' से पहले के हिस्से को अनदेखा कर '@' के बाद वाले असली डोमेन से जुड़ते हैं।",
+      weight: 34,
     });
   }
 
-  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.startsWith("[")) {
+  if (isIpLiteralHost(host)) {
+    summary.isIpBasedHost = true;
     indicators.push({
       id: "ip-host",
       severity: "high",
-      category: "domain",
-      titleEn: `Uses raw IP address (${host}) instead of a domain name`,
+      category: "ip-host",
+      titleEn: `Uses raw or obfuscated IP address (${host}) instead of a domain name`,
       titleHi: `डोमेन नाम के बजाय सीधे IP पते (${host}) का उपयोग`,
-      detailEn: "Legitimate consumer login portals rarely host authentication pages on raw IP addresses.",
-      detailHi: "वैध सेवाएं सामान्यतः लॉगिन पेज के लिए सीधे IP पते का उपयोग नहीं करतीं।",
-      weight: 30,
+      detailEn:
+        "Legitimate login portals almost never host public authentication pages on raw IP addresses.",
+      detailHi: "वैध सेवाएं लॉगिन पेज के लिए सीधे IP पते का उपयोग नहीं करतीं।",
+      weight: 34,
     });
   }
 
   if (host.includes("xn--")) {
+    summary.hasSuspiciousDomainPattern = true;
     indicators.push({
       id: "punycode-homograph",
       severity: "high",
       category: "domain",
       titleEn: "Punycode / IDN homograph domain detected (xn--)",
       titleHi: "प्यूनीकोड / समान दिखने वाला होमोग्राफ़ डोमेन (xn--)",
-      detailEn: "Internationalized characters can impersonate Latin letters (e.g., Cyrillic 'а' vs Latin 'a').",
+      detailEn:
+        "Internationalized characters can mimic Latin letters (homograph attack) to impersonate trusted brands.",
       detailHi: "अंतरराष्ट्रीय वर्ण दिखने में असली डोमेन जैसे लग सकते हैं पर अलग वेबसाइट पर ले जाते हैं।",
-      weight: 32,
+      weight: 34,
+    });
+  }
+
+  if (parsed.port && !["80", "443"].includes(parsed.port)) {
+    summary.hasSuspiciousDomainPattern = true;
+    indicators.push({
+      id: "non-standard-port",
+      severity: "medium",
+      category: "domain",
+      titleEn: `Uses non-standard network port (:${parsed.port})`,
+      titleHi: `गैर-मानक नेटवर्क पोर्ट (:${parsed.port}) का उपयोग`,
+      detailEn:
+        "Consumer phishing kits or temporary C2 servers frequently serve pages on non-standard ports.",
+      detailHi: "अस्थायी फ़िशिंग सर्वर अक्सर गैर-मानक पोर्ट पर होस्ट किए जाते हैं।",
+      weight: 16,
     });
   }
 
   const parts = host.split(".");
   const tld = parts[parts.length - 1] || "";
-  if (SUSPICIOUS_TLDS.has(tld)) {
+  if (!isIpLiteralHost(host) && SUSPICIOUS_TLDS.has(tld)) {
+    summary.hasSuspiciousDomainPattern = true;
     indicators.push({
       id: `risky-tld-${tld}`,
       severity: "medium",
       category: "domain",
       titleEn: `High-abuse top-level domain (.${tld})`,
-      titleHi: `संदिग्ध या अधिक दुरुपयोग वाला डोमेन एक्सटेंशन (.${tld})`,
-      detailEn: `The .${tld} TLD has elevated phishing abuse rates; verify sender authenticity carefully.`,
+      titleHi: `अधिक दुरुपयोग वाला डोमेन एक्सटेंशन (.${tld})`,
+      detailEn: `The .${tld} TLD experiences elevated phishing abuse rates; confirm the registered organization carefully.`,
       detailHi: `.${tld} डोमेन का उपयोग फ़िशिंग अभियानों में अधिक देखा जाता है; स्रोत की पुष्टि करें।`,
       weight: 16,
     });
   }
 
-  if (parts.length >= 4) {
+  const rootMainLabel = rootDomain.split(".")[0] || "";
+  if ((rootMainLabel.match(/-/g) || []).length >= 2) {
+    summary.hasSuspiciousDomainPattern = true;
     indicators.push({
-      id: "excessive-subdomains",
+      id: "hyphenated-domain",
       severity: "medium",
       category: "domain",
-      titleEn: `Deep subdomain nesting (${parts.length} labels)`,
-      titleHi: `अत्यधिक सबडोमेन स्तर (${parts.length} भाग)`,
-      detailEn: "Phishers prepend brand names as subdomains (e.g., paypal.login.example.xyz) to hide the real root domain.",
-      detailHi: "असली रूट डोमेन छिपाने के लिए अक्सर ब्रांड का नाम सबडोमेन में जोड़ा जाता है।",
-      weight: 18,
+      titleEn: `Multiple hyphens inside root domain (${rootDomain})`,
+      titleHi: `मूल डोमेन (${rootDomain}) में कई हाइफ़न (-) का उपयोग`,
+      detailEn:
+        "Phishing domains frequently chain words with hyphens (e.g., bank-login-secure-update.com) to look official.",
+      detailHi: "नकली डोमेन आधिकारिक दिखने के लिए अक्सर कई शब्दों को हाइफ़न से जोड़ते हैं।",
+      weight: 16,
     });
   }
 
   if (URL_SHORTENERS.has(host)) {
+    summary.isUrlShortener = true;
     indicators.push({
       id: "url-shortener",
       severity: "medium",
-      category: "url",
+      category: "shortener",
       titleEn: `Uses URL shortener (${host})`,
       titleHi: `URL शॉर्टनर (${host}) का उपयोग`,
-      detailEn: "Shortened links obscure the final destination domain until clicked.",
-      detailHi: "शॉर्ट लिंक क्लिक करने से पहले अंतिम वेबसाइट का पता छिपा देते हैं।",
-      weight: 15,
+      detailEn:
+        "Shortened links conceal the true destination domain until opened; expand or verify via an official source first.",
+      detailHi: "शॉर्ट लिंक क्लिक करने से पहले अंतिम वेबसाइट का असली डोमेन छिपा देते हैं।",
+      weight: 18,
     });
   }
 
-  // Brand typosquatting / impersonation check
-  const rootDomain = parts.length >= 2 ? `${parts[parts.length - 2]}.${tld}` : host;
-  for (const brand of HIGH_TARGET_BRANDS) {
-    const brandLabel = brand.split(".")[0];
-    if (host !== brand && !host.endsWith(`.${brand}`)) {
-      const dist = levenshtein(rootDomain, brand);
-      if (dist > 0 && dist <= 2) {
-        indicators.push({
-          id: `typosquat-${brand}`,
-          severity: "high",
-          category: "domain",
-          titleEn: `Possible typosquatting impersonating ${brand}`,
-          titleHi: `${brand} की नकल करने वाला संभावित टाइपोस्क्वैटिंग डोमेन`,
-          detailEn: `Domain "${rootDomain}" differs from "${brand}" by only ${dist} character(s).`,
-          detailHi: `डोमेन "${rootDomain}" असली "${brand}" से केवल ${dist} अक्षर अलग है।`,
-          weight: 38,
-        });
-        break;
-      } else if (host.includes(brandLabel) && brandLabel.length >= 4) {
-        indicators.push({
-          id: `brand-impersonation-${brand}`,
-          severity: "high",
-          category: "domain",
-          titleEn: `Contains brand keyword "${brandLabel}" on non-official domain (${rootDomain})`,
-          titleHi: `गैर-आधिकारिक डोमेन (${rootDomain}) में ब्रांड शब्द "${brandLabel}" शामिल है`,
-          detailEn: `Official traffic for ${brand} uses ${brand}, not third-party domains containing the brand name.`,
-          detailHi: `${brand} की आधिकारिक सेवाएं केवल ${brand} पर होती हैं, अन्य डोमेन पर नहीं।`,
-          weight: 30,
-        });
-        break;
+  // Misleading subdomain checks
+  if (subdomains) {
+    const subLower = subdomains.toLowerCase();
+    const impersonatedBrand = HIGH_TARGET_BRANDS.find((b) => {
+      const label = b.split(".")[0];
+      return rootDomain !== b && subLower.includes(label);
+    });
+
+    if (impersonatedBrand) {
+      summary.hasMisleadingSubdomain = true;
+      indicators.push({
+        id: `misleading-subdomain-${impersonatedBrand}`,
+        severity: "high",
+        category: "subdomain",
+        titleEn: `Misleading subdomain embeds "${impersonatedBrand.split(".")[0]}" while true root is ${rootDomain}`,
+        titleHi: `भ्रामक सबडोमेन में "${impersonatedBrand.split(".")[0]}" है जबकि असली डोमेन ${rootDomain} है`,
+        detailEn: `Attackers place trusted brand names inside subdomains (${subdomains}) to deceive readers—the owner of ${rootDomain} controls this page, NOT ${impersonatedBrand}.`,
+        detailHi: `हमलावर भरोसेमंद ब्रांड का नाम सबडोमेन (${subdomains}) में रखते हैं; इस पेज का नियंत्रण ${rootDomain} के पास है।`,
+        weight: 36,
+      });
+    } else if (parts.length >= 4) {
+      summary.hasMisleadingSubdomain = true;
+      indicators.push({
+        id: "excessive-subdomains",
+        severity: "medium",
+        category: "subdomain",
+        titleEn: `Deep subdomain nesting (${parts.length} labels; true root is ${rootDomain})`,
+        titleHi: `अत्यधिक सबडोमेन स्तर (${parts.length} भाग; असली डोमेन ${rootDomain})`,
+        detailEn:
+          "Deep subdomain chains push the true root domain to the right to confuse mobile and hurried users.",
+        detailHi: "लंबे सबडोमेन असली रूट डोमेन को दाईं ओर धकेलकर उपयोगकर्ता को भ्रमित करते हैं।",
+        weight: 18,
+      });
+    }
+  }
+
+  // Brand typosquatting / impersonation in root domain
+  if (!isIpLiteralHost(host)) {
+    for (const brand of HIGH_TARGET_BRANDS) {
+      const brandLabel = brand.split(".")[0];
+      if (host !== brand && !host.endsWith(`.${brand}`)) {
+        const dist = levenshtein(rootDomain, brand);
+        if (dist > 0 && dist <= 2) {
+          summary.hasSuspiciousDomainPattern = true;
+          indicators.push({
+            id: `typosquat-${brand}`,
+            severity: "high",
+            category: "domain",
+            titleEn: `Possible typosquatting impersonating ${brand}`,
+            titleHi: `${brand} की नकल करने वाला संभावित टाइपोस्क्वैटिंग डोमेन`,
+            detailEn: `Root domain "${rootDomain}" differs from official "${brand}" by only ${dist} character(s).`,
+            detailHi: `डोमेन "${rootDomain}" असली "${brand}" से केवल ${dist} अक्षर अलग है।`,
+            weight: 45,
+          });
+          break;
+        } else if (rootDomain.includes(brandLabel) && brandLabel.length >= 4) {
+          summary.hasSuspiciousDomainPattern = true;
+          indicators.push({
+            id: `brand-impersonation-${brand}`,
+            severity: "high",
+            category: "domain",
+            titleEn: `Embeds brand keyword "${brandLabel}" inside non-official domain (${rootDomain})`,
+            titleHi: `गैर-आधिकारिक डोमेन (${rootDomain}) में ब्रांड शब्द "${brandLabel}" शामिल है`,
+            detailEn: `Official services for ${brand} run on ${brand}, not third-party domains containing the brand name.`,
+            detailHi: `${brand} की आधिकारिक सेवाएं केवल ${brand} पर होती हैं, अन्य डोमेन पर नहीं।`,
+            weight: 32,
+          });
+          break;
+        }
       }
     }
   }
 
-  const fullPath = `${parsed.pathname}${parsed.search}`.toLowerCase();
-  const matchedTerms = URL_SENSITIVE_TERMS.filter((t) => fullPath.includes(t));
-  if (matchedTerms.length >= 2) {
+  // Suspicious keywords across host + path + query
+  const searchableUrl = `${host}${parsed.pathname}${parsed.search}`.toLowerCase();
+  const matchedTerms = URL_SENSITIVE_TERMS.filter((t) => searchableUrl.includes(t));
+  if (matchedTerms.length >= 1) {
+    summary.hasSuspiciousKeywords = true;
+    const isMulti = matchedTerms.length >= 2;
     indicators.push({
       id: "url-sensitive-keywords",
-      severity: "low",
-      category: "url",
-      titleEn: `Multiple credential-action keywords in path (${matchedTerms.slice(0, 3).join(", ")})`,
-      titleHi: `URL पथ में संवेदनशील कीवर्ड (${matchedTerms.slice(0, 3).join(", ")})`,
-      detailEn: "Combine this with domain verification before entering any credentials.",
-      detailHi: "किसी भी जानकारी को दर्ज करने से पहले डोमेन की पूरी तरह पुष्टि करें।",
-      weight: 10,
+      severity: isMulti ? "medium" : "low",
+      category: "keywords",
+      titleEn: `Suspicious credential/action keyword(s) in URL (${matchedTerms.slice(0, 4).join(", ")})`,
+      titleHi: `URL में संवेदनशील कीवर्ड (${matchedTerms.slice(0, 4).join(", ")})`,
+      detailEn:
+        "Phishing URLs commonly include action lures like verify, kyc, suspend, login, or otp to create urgency.",
+      detailHi: "फ़िशिंग लिंक में अक्सर verify, kyc, suspend, login या otp जैसे कीवर्ड उपयोग होते हैं।",
+      weight: isMulti ? 16 : 8,
     });
   }
 
-  return { host, protocol };
+  return {
+    valid: true,
+    host,
+    protocol,
+    anatomy,
+  };
 }
 
 /**
- * Deterministic client-side URL & Message Phishing Heuristic Engine.
+ * Deterministic client-side Phishing URL & Message Heuristic Engine.
+ * Never opens, visits, or fetches submitted URLs.
  */
 export function analyzePhishingInput(input: {
   url?: string;
@@ -316,17 +553,34 @@ export function analyzePhishingInput(input: {
   const rawUrl = (input.url || "").trim();
   const rawText = (input.messageText || "").trim();
 
+  const detectionSummary: PhishingDetectionSummary = {
+    isIpBasedHost: false,
+    hasMisleadingSubdomain: false,
+    isUrlShortener: false,
+    hasSuspiciousDomainPattern: false,
+    hasSuspiciousKeywords: false,
+    hasUnsafeProtocol: false,
+  };
+
   const textUrls = extractUrls(rawText);
   const allUrls = Array.from(new Set([...(rawUrl ? [rawUrl] : []), ...textUrls]));
 
+  let isValidUrlSyntax = rawUrl ? false : true;
+  let syntaxErrorEn: string | undefined;
+  let syntaxErrorHi: string | undefined;
   let parsedHost: string | undefined;
   let parsedProtocol: string | undefined;
+  let urlAnatomy: UrlAnatomy | undefined;
 
   allUrls.forEach((u, idx) => {
-    const res = inspectSingleUrl(u, indicators);
+    const res = inspectSingleUrl(u, indicators, detectionSummary);
     if (idx === 0) {
+      isValidUrlSyntax = res.valid;
+      syntaxErrorEn = res.errorEn;
+      syntaxErrorHi = res.errorHi;
       parsedHost = res.host;
       parsedProtocol = res.protocol;
+      urlAnatomy = res.anatomy;
     }
   });
 
@@ -347,7 +601,6 @@ export function analyzePhishingInput(input: {
     }
   }
 
-  // Deduplicate indicators by id
   const uniqueMap = new Map<string, PhishingIndicator>();
   for (const ind of indicators) {
     if (!uniqueMap.has(ind.id)) uniqueMap.set(ind.id, ind);
@@ -368,23 +621,40 @@ export function analyzePhishingInput(input: {
   const adviceHi: string[] = [];
 
   if (riskLevel === "high-risk" || riskLevel === "suspicious") {
-    adviceEn.push("Do not click embedded links, download attachments, or enter credentials/OTPs.");
-    adviceEn.push("Navigate independently by typing the official website address or calling the official support number.");
-    adviceHi.push("संदिग्ध लिंक पर क्लिक न करें, अटैचमेंट डाउनलोड न करें, और पासवर्ड/OTP न भरें।");
-    adviceHi.push("आधिकारिक वेबसाइट का पता स्वयं ब्राउज़र में टाइप करके या आधिकारिक हेल्पलाइन से पुष्टि करें।");
+    adviceEn.push("Do NOT open this link, download attachments, or enter credentials/OTPs.");
+    adviceEn.push(
+      "Navigate independently by typing the official website address or using an official saved bookmark."
+    );
+    adviceHi.push("इस लिंक को न खोलें, अटैचमेंट डाउनलोड न करें, और पासवर्ड/OTP न भरें।");
+    adviceHi.push(
+      "आधिकारिक वेबसाइट का पता स्वयं ब्राउज़र में टाइप करके या सहेजे गए बुकमार्क से पुष्टि करें।"
+    );
   } else if (riskLevel === "caution") {
-    adviceEn.push("Minor risk signals found. Double-check the exact root domain and sender email address before acting.");
-    adviceHi.push("कुछ सामान्य जोखिम संकेत मिले हैं। आगे बढ़ने से पहले मूल डोमेन और प्रेषक के पते की पुष्टि करें।");
+    adviceEn.push(
+      "Heuristic caution signals detected. Confirm the true root domain and verify sender identity independently."
+    );
+    adviceHi.push(
+      "सावधानी के संकेत मिले हैं। आगे बढ़ने से पहले असली रूट डोमेन और प्रेषक की पहचान की पुष्टि करें।"
+    );
   } else {
-    adviceEn.push("No obvious heuristic phishing signals triggered—still verify sender identity before sharing sensitive data.");
-    adviceHi.push("कोई स्पष्ट फ़िशिंग संकेत नहीं मिला—फिर भी संवेदनशील जानकारी साझा करने से पहले प्रेषक की पहचान जांचें।");
+    adviceEn.push(
+      "No heuristic anomalies triggered—note that zero-hour phishing links can still appear clean, so always verify sender context."
+    );
+    adviceHi.push(
+      "कोई ह्यूरिस्टिक संकेत नहीं मिला—फिर भी नए फ़िशिंग लिंक अनदेखे रह सकते हैं, इसलिए हमेशा स्रोत की पुष्टि करें।"
+    );
   }
 
   return {
+    isValidUrlSyntax,
+    syntaxErrorEn,
+    syntaxErrorHi,
     riskScore: totalScore,
     riskLevel,
     parsedHost,
     parsedProtocol,
+    urlAnatomy,
+    detectionSummary,
     extractedUrls: allUrls,
     indicators: uniqueIndicators,
     adviceEn,

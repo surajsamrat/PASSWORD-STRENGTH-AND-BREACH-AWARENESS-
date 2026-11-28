@@ -53,7 +53,7 @@ export const PasswordImprovementPanel: React.FC<PasswordImprovementPanelProps> =
             <CardDescription className="mt-1">{t.improvement.subtitle}</CardDescription>
           </div>
           <Badge variant="default" className="text-[10px]">
-            Actionable Guidance
+            {t.improvement.actionableBadge}
           </Badge>
         </div>
       </CardHeader>
@@ -119,7 +119,7 @@ export const PasswordImprovementPanel: React.FC<PasswordImprovementPanelProps> =
                   </span>
                   {item.detected && (
                     <Badge variant="amber" className="text-[10px]">
-                      Detected
+                      {t.common.detected}
                     </Badge>
                   )}
                 </div>

@@ -55,14 +55,14 @@ export const SettingsPage: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Languages className="h-4 w-4 text-sky-500" />
+              <Languages className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               {t.settings.appearanceCard}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Theme
+                {t.settings.themeLabel}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Button
@@ -112,7 +112,7 @@ export const SettingsPage: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-4 w-4 text-emerald-500" />
+              <User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               {t.settings.profileCard}
             </CardTitle>
           </CardHeader>
@@ -120,7 +120,7 @@ export const SettingsPage: React.FC = () => {
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">
-                  Display Name
+                  {t.settings.displayNameLabel}
                 </label>
                 <Input
                   value={displayName}
@@ -130,7 +130,7 @@ export const SettingsPage: React.FC = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">
-                  Role / Track
+                  {t.settings.roleTitleLabel}
                 </label>
                 <Input
                   value={roleTitle}
@@ -141,7 +141,7 @@ export const SettingsPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <Button type="submit">{t.settings.saveProfile}</Button>
                 {savedFlag && (
-                  <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     {t.settings.saved}
                   </span>
@@ -155,16 +155,16 @@ export const SettingsPage: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-sky-500" />
+              <Shield className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               {t.settings.privacyCard}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <div>
-                <p className="text-sm font-semibold">Persist Local Activity Timeline</p>
+                <p className="text-sm font-semibold">{t.settings.persistActivityTitle}</p>
                 <p className="text-xs text-muted-foreground">
-                  Stores audit counts & learning timeline in browser localStorage only.
+                  {t.settings.persistActivityDesc}
                 </p>
               </div>
               <Switch
@@ -175,9 +175,9 @@ export const SettingsPage: React.FC = () => {
 
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <div>
-                <p className="text-sm font-semibold">Strict Analyzer Baseline (12+ chars)</p>
+                <p className="text-sm font-semibold">{t.settings.strictModeTitle}</p>
                 <p className="text-xs text-muted-foreground">
-                  Enforce 12-character minimum threshold instead of 8 characters.
+                  {t.settings.strictModeDesc}
                 </p>
               </div>
               <Switch
@@ -188,8 +188,8 @@ export const SettingsPage: React.FC = () => {
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="font-semibold">Clipboard Auto-Clear Timer</span>
-                <span className="font-mono text-sky-400">
+                <span className="font-semibold">{t.settings.clipboardTimerLabel}</span>
+                <span className="font-mono text-sky-600 dark:text-sky-400">
                   {settings.clipboardAutoClearSeconds}s
                 </span>
               </div>
@@ -210,7 +210,7 @@ export const SettingsPage: React.FC = () => {
         <Card className="border-destructive/25">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FlaskConical className="h-4 w-4 text-amber-500" />
+              <FlaskConical className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               {t.settings.dangerZone}
             </CardTitle>
           </CardHeader>
@@ -232,7 +232,7 @@ export const SettingsPage: React.FC = () => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Resetting clears all locally stored XP, quiz progress, hygiene checklist items, and activity history from this browser.
+              {t.settings.resetWarning}
             </p>
           </CardContent>
         </Card>

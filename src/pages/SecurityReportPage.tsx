@@ -74,10 +74,9 @@ export const SecurityReportPage: React.FC = () => {
     [settings.displayName, postureScore, demoPreviewActive, sessionSnapshot, hygiene]
   );
 
-  const quizAccuracy =
-    metrics.quizTotalAnswered > 0
-      ? Math.round((metrics.quizCorrectAnswers / metrics.quizTotalAnswered) * 100)
-      : 0;
+  const hygieneDoneCount = hygiene.filter((h) => h.completed).length;
+  const hygienePct =
+    hygiene.length > 0 ? Math.round((hygieneDoneCount / hygiene.length) * 100) : 0;
 
   const handleQuickEvaluate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +127,7 @@ export const SecurityReportPage: React.FC = () => {
           ) : (
             <Badge variant="emerald">
               <Lock className="h-3 w-3" />
-              Sanitized Report
+              {t.report.sanitizedBadge}
             </Badge>
           )
         }
@@ -185,7 +184,7 @@ export const SecurityReportPage: React.FC = () => {
                 {t.report.postureGrade}
               </CardTitle>
               <Badge variant={riskBadgeVariant} className="uppercase text-[10px]">
-                {report.overallAssessment.riskTier} risk
+                {report.overallAssessment.riskTier} {t.report.riskSuffix}
               </Badge>
             </div>
           </CardHeader>
@@ -212,7 +211,7 @@ export const SecurityReportPage: React.FC = () => {
             </div>
             <div className="pt-2 border-t border-border/70 flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                Operator: <strong className="text-foreground">{report.operatorName}</strong>
+                {t.common.operatorLabel}: <strong className="text-foreground">{report.operatorName}</strong>
               </span>
               <span>{new Date(report.generatedAt).toLocaleString()}</span>
             </div>
@@ -247,10 +246,10 @@ export const SecurityReportPage: React.FC = () => {
                 ),
               },
               {
-                labelEn: "Quiz Accuracy",
-                labelHi: "क्विज़ सटीकता",
-                value: `${quizAccuracy}%`,
-                progress: quizAccuracy,
+                labelEn: "Security Hygiene Controls",
+                labelHi: "सुरक्षा स्वच्छता नियंत्रण",
+                value: `${hygieneDoneCount}/${hygiene.length}`,
+                progress: hygienePct,
               },
             ].map((row) => (
               <div
@@ -281,7 +280,7 @@ export const SecurityReportPage: React.FC = () => {
               </CardTitle>
               <CardDescription className="mt-1">
                 {snap
-                  ? `Assessed ${new Date(snap.assessedAt).toLocaleString()} • Length: ${snap.length} chars (plaintext omitted)`
+                  ? `${new Date(snap.assessedAt).toLocaleString()} • ${t.common.lenShort}: ${snap.length} ${t.common.charsUnit} (${t.report.plaintextOmittedNote})`
                   : t.report.noCredentialYet}
               </CardDescription>
             </div>
@@ -326,7 +325,11 @@ export const SecurityReportPage: React.FC = () => {
                     size="icon"
                     onClick={() => setShowQuickPw((s) => !s)}
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                    aria-label={showQuickPw ? "Hide password" : "Show password"}
+                    aria-label={
+                      showQuickPw
+                        ? t.analyzer.hidePasswordAria
+                        : t.analyzer.showPasswordAria
+                    }
                   >
                     {showQuickPw ? (
                       <EyeOff className="h-4 w-4" />
@@ -359,7 +362,7 @@ export const SecurityReportPage: React.FC = () => {
               {/* Strength, Entropy & Breach Status Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-border/80 bg-secondary/35 p-3.5 space-y-1">
-                  <p className="text-xs text-muted-foreground">Strength Category</p>
+                  <p className="text-xs text-muted-foreground">{t.report.strengthCatLabel}</p>
                   <p className="text-base font-extrabold">
                     {t.analyzer.levels[snap.strengthLevel]}
                   </p>
@@ -369,18 +372,18 @@ export const SecurityReportPage: React.FC = () => {
                 </div>
 
                 <div className="rounded-xl border border-border/80 bg-secondary/35 p-3.5 space-y-1">
-                  <p className="text-xs text-muted-foreground">Entropy Estimate</p>
-                  <p className="text-base font-extrabold font-mono text-sky-400">
+                  <p className="text-xs text-muted-foreground">{t.report.entropyEstLabel}</p>
+                  <p className="text-base font-extrabold font-mono text-sky-600 dark:text-sky-400">
                     {snap.effectiveEntropyBits} bits
                   </p>
                   <p className="text-xs font-mono text-muted-foreground">
-                    Pool {snap.entropyBits} • Shannon {snap.shannonEntropyBits}
+                    {t.analyzer.entropyLabel} {snap.entropyBits} • {t.analyzer.shannonEntropyLabel} {snap.shannonEntropyBits}
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-border/80 bg-secondary/35 p-3.5 space-y-1 sm:col-span-2">
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Radar className="h-3.5 w-3.5 text-sky-400" />
+                    <Radar className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                     {t.report.breachStatusTitle}
                   </p>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -390,17 +393,17 @@ export const SecurityReportPage: React.FC = () => {
                         snap.breachStatus === "pwned"
                           ? "text-destructive"
                           : snap.breachStatus === "clean"
-                          ? "text-emerald-500"
+                          ? "text-emerald-600 dark:text-emerald-400"
                           : "text-muted-foreground"
                       )}
                     >
                       {snap.breachStatus === "pwned"
-                        ? `Exposed in public breaches (${snap.breachCount.toLocaleString()} occurrences)`
+                        ? `${t.report.breachPwnedPrefix} (${snap.breachCount.toLocaleString()} ${t.breach.occurrencesUnit})`
                         : snap.breachStatus === "clean"
-                        ? "Not found in HIBP public password corpus"
+                        ? t.report.breachCleanMsg
                         : snap.breachStatus === "error"
-                        ? "Breach check failed / unavailable"
-                        : "Not checked yet — run Breach Checker to attach status"}
+                        ? t.report.breachErrorMsg
+                        : t.report.breachNotCheckedMsg}
                     </p>
                     {snap.breachStatus === "not-checked" && (
                       <Button asChild size="sm" variant="outline" className="no-print h-7 text-xs">

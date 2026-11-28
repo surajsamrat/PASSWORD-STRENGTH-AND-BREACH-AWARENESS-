@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Cpu,
   FishOff,
-  GraduationCap,
   KeyRound,
   Languages,
   Lock,
@@ -26,7 +25,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   KeyRound,
   Radar,
   FishOff,
-  GraduationCap,
   Award,
   Languages,
 };

@@ -184,9 +184,9 @@ describe("SecureCheck AI Assistant Backend & Privacy Controls", () => {
     expect(passwordTextRes.body.code).toBe("PRIVACY_VIOLATION");
   });
 
-  it("returns 503 AI_NOT_CONFIGURED when no server AI API key is present", async () => {
-    const app = createAssistantApp({ env: {} });
-    const res = await invokeApp(app, {
+  it("returns 503 AI_NOT_CONFIGURED when no server AI API key is present or only placeholder is set", async () => {
+    const emptyApp = createAssistantApp({ env: {} });
+    const emptyRes = await invokeApp(emptyApp, {
       method: "POST",
       path: "/api/assistant/chat",
       body: {
@@ -195,19 +195,47 @@ describe("SecureCheck AI Assistant Backend & Privacy Controls", () => {
         history: [],
       },
     });
-    expect(res.status).toBe(503);
-    expect(res.body.code).toBe("AI_NOT_CONFIGURED");
+    expect(emptyRes.status).toBe(503);
+    expect(emptyRes.body.code).toBe("AI_NOT_CONFIGURED");
+
+    const placeholderApp = createAssistantApp({
+      env: { GEMINI_API_KEY: "PASTE_YOUR_GEMINI_API_KEY_HERE" },
+    });
+    const healthRes = await invokeApp(placeholderApp, {
+      method: "GET",
+      path: "/api/health",
+    });
+    expect(healthRes.status).toBe(200);
+    expect(healthRes.body).toEqual({
+      ok: true,
+      providerConfigured: false,
+      provider: "none",
+    });
+
+    const placeholderChatRes = await invokeApp(placeholderApp, {
+      method: "POST",
+      path: "/api/assistant/chat",
+      body: {
+        message: "Explain why passphrases resist GPU cracking.",
+        language: "en",
+        history: [],
+      },
+    });
+    expect(placeholderChatRes.status).toBe(503);
+    expect(placeholderChatRes.body.code).toBe("AI_NOT_CONFIGURED");
   });
 
   it("enforces per-IP rate limiting with 429 and Retry-After headers", async () => {
-    const mockFetch = vi.fn(async () =>
-      new Response(
+    let capturedGeminiBody = "";
+    const mockFetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      capturedGeminiBody = String(init?.body || "");
+      return new Response(
         JSON.stringify({
           candidates: [{ content: { parts: [{ text: "Entropy explanation." }] } }],
         }),
         { status: 200 }
-      )
-    );
+      );
+    });
 
     const app = createAssistantApp({
       rateLimitMax: 2,
@@ -231,6 +259,9 @@ describe("SecureCheck AI Assistant Backend & Privacy Controls", () => {
     });
     expect(r2.status).toBe(200);
     expect(r2.headers["x-ratelimit-remaining"]).toBe("0");
+    expect(capturedGeminiBody).toContain(
+      "ALWAYS respond in clear, professional, easy-to-understand English"
+    );
 
     const r3 = await invokeApp(app, {
       method: "POST",

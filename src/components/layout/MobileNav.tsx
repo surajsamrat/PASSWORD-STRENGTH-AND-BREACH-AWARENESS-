@@ -22,7 +22,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ open, onClose }) => {
   ];
 
   const bottomQuickRoutes = NAV_ITEMS.filter((i) =>
-    ["dashboard", "analyzer", "generator", "breach", "quiz"].includes(i.id)
+    ["dashboard", "analyzer", "generator", "breach", "phishing"].includes(i.id)
   );
 
   return (

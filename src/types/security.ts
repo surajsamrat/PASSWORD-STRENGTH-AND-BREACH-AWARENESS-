@@ -88,7 +88,15 @@ export type RiskLevel = "safe" | "caution" | "suspicious" | "high-risk";
 export interface PhishingIndicator {
   id: string;
   severity: "high" | "medium" | "low" | "info";
-  category: "url" | "domain" | "content" | "protocol";
+  category:
+    | "syntax"
+    | "ip-host"
+    | "subdomain"
+    | "domain"
+    | "shortener"
+    | "keywords"
+    | "protocol"
+    | "content";
   titleEn: string;
   titleHi: string;
   detailEn: string;
@@ -96,34 +104,59 @@ export interface PhishingIndicator {
   weight: number;
 }
 
+export interface UrlAnatomy {
+  protocol: string;
+  subdomains: string;
+  rootDomain: string;
+  port: string;
+  pathAndQuery: string;
+}
+
+export interface PhishingDetectionSummary {
+  isIpBasedHost: boolean;
+  hasMisleadingSubdomain: boolean;
+  isUrlShortener: boolean;
+  hasSuspiciousDomainPattern: boolean;
+  hasSuspiciousKeywords: boolean;
+  hasUnsafeProtocol: boolean;
+}
+
 export interface PhishingAnalysisResult {
+  isValidUrlSyntax: boolean;
+  syntaxErrorEn?: string;
+  syntaxErrorHi?: string;
   riskScore: number; // 0 - 100
   riskLevel: RiskLevel;
   parsedHost?: string;
   parsedProtocol?: string;
+  urlAnatomy?: UrlAnatomy;
+  detectionSummary: PhishingDetectionSummary;
   extractedUrls: string[];
   indicators: PhishingIndicator[];
   adviceEn: string[];
   adviceHi: string[];
 }
 
-export interface QuizQuestion {
-  id: string;
-  category: "passwords" | "phishing" | "mfa" | "network";
-  difficulty: "beginner" | "intermediate" | "advanced";
-  questionEn: string;
-  questionHi: string;
-  optionsEn: string[];
-  optionsHi: string[];
-  correctIndex: number;
-  explanationEn: string;
-  explanationHi: string;
-  xp: number;
+export interface ThreatIntelMatch {
+  threatType: string;
+  platformType: string;
+  threatEntryType: string;
+}
+
+export interface ThreatIntelResult {
+  provider: string;
+  providerName: string;
+  configured: boolean;
+  status: "safe" | "flagged" | "unconfigured" | "error";
+  matches: ThreatIntelMatch[];
+  checkedAt?: string;
+  noteEn: string;
+  noteHi: string;
 }
 
 export interface ActivityItem {
   id: string;
-  type: "analyzer" | "generator" | "breach" | "phishing" | "quiz" | "hygiene";
+  type: "analyzer" | "generator" | "breach" | "phishing" | "hygiene";
   titleEn: string;
   titleHi: string;
   meta: string;
@@ -148,10 +181,6 @@ export interface UserMetrics {
   breachChecksRun: number;
   phishingScansRun: number;
   threatsFlagged: number;
-  quizzesCompleted: number;
-  quizCorrectAnswers: number;
-  quizTotalAnswered: number;
-  bestQuizStreak: number;
   xp: number;
   usedHindiOrSwitchedLang: boolean;
 }
@@ -180,18 +209,6 @@ export interface AchievementDef {
   };
 }
 
-export interface DemoLeaderboardEntry {
-  id: string;
-  name: string;
-  role: string;
-  xp: number;
-  quizzesCompleted: number;
-  accuracy: number;
-  streak: number;
-  isCurrentUser?: boolean;
-  isDemo: boolean;
-}
-
 export interface ImprovementActionStep {
   id: string;
   priority: "high" | "medium" | "low";
@@ -218,6 +235,34 @@ export interface PasswordImprovementPlan {
   patternExplanations: PatternExplanation[];
   passphraseSuggestions: string[];
   actionableSteps: ImprovementActionStep[];
+}
+
+export interface LiveToolContext {
+  analyzer?: {
+    score: number;
+    level: StrengthLevel;
+    length: number;
+    entropyBits: number;
+    effectiveEntropyBits: number;
+    weaknessIds: string[];
+    crackTimes: CrackTimeEstimates;
+  };
+  generator?: {
+    mode: "random" | "passphrase";
+    lengthOrWords: number;
+    enabledCharsetsCount: number;
+    excludeAmbiguous: boolean;
+  };
+  breach?: {
+    status: "idle" | "checking" | "pwned" | "clean" | "error";
+    count: number;
+  };
+  phishing?: {
+    riskScore: number;
+    riskLevel: RiskLevel;
+    indicatorCategories: string[];
+    summaryFlags: string[];
+  };
 }
 
 export interface SanitizedCredentialSnapshot {

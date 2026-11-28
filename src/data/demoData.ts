@@ -1,7 +1,6 @@
 import type {
   ActivityItem,
   DemoEmailBreach,
-  DemoLeaderboardEntry,
   HygieneChecklistItem,
 } from "@/types/security";
 
@@ -116,24 +115,38 @@ export const DEMO_EMAIL_BREACH_PROFILES: Record<string, DemoEmailBreach[]> = {
 export const PHISHING_SAMPLE_CASES = [
   {
     id: "sample-phish-bank",
-    labelEn: "Phishing: Urgent Bank KYC",
-    labelHi: "फ़िशिंग: नकली बैंक KYC",
-    url: "http://sbi-kyc-update.verify-login.xyz/auth/otp",
+    labelEn: "Misleading Subdomain + KYC",
+    labelHi: "भ्रामक सबडोमेन + KYC",
+    url: "http://sbi.kyc-update.verify-login.xyz/auth/otp",
     message:
-      "URGENT: Dear Customer, your account will be suspended within 24 hours. Enter your OTP and verify KYC immediately at http://sbi-kyc-update.verify-login.xyz/auth/otp",
+      "URGENT: Dear Customer, your account will be suspended within 24 hours. Enter your OTP and verify KYC immediately.",
+  },
+  {
+    id: "sample-ip-host",
+    labelEn: "IP-Based Login URL",
+    labelHi: "IP-आधारित लॉगिन URL",
+    url: "http://198.51.100.42:8080/signin/verify",
+    message: "",
+  },
+  {
+    id: "sample-shortener",
+    labelEn: "Shortened Link (bit.ly)",
+    labelHi: "शॉर्ट लिंक (bit.ly)",
+    url: "https://bit.ly/3xSampleVerify",
+    message: "",
   },
   {
     id: "sample-typosquat",
-    labelEn: "Phishing: Typosquatted Brand",
-    labelHi: "फ़िशिंग: मिलता-जुलता डोमेन",
-    url: "https://micros0ft-security.com/signin/password",
+    labelEn: "Typosquatted Brand",
+    labelHi: "नकली टाइपोस्क्वैटिंग डोमेन",
+    url: "https://paypa1-secure-update.com/signin/password",
     message:
       "Unauthorized login detected on your account. Confirm your password immediately to prevent permanent lock.",
   },
   {
     id: "sample-safe",
-    labelEn: "Legitimate: Official Advisory",
-    labelHi: "सुरक्षित: आधिकारिक वेबसाइट",
+    labelEn: "Official Advisory (Safe)",
+    labelHi: "आधिकारिक वेबसाइट (सुरक्षित)",
     url: "https://github.com/settings/security",
     message:
       "Review your active SSH keys and passkeys directly in your GitHub Security Settings.",
@@ -179,62 +192,6 @@ export const INITIAL_HYGIENE_CHECKLIST: HygieneChecklistItem[] = [
   },
 ];
 
-/**
- * CLEARLY MARKED DEMO COMMUNITY PROFILES for Leaderboard comparison.
- */
-export const DEMO_LEADERBOARD_PEERS: DemoLeaderboardEntry[] = [
-  {
-    id: "demo-peer-1",
-    name: "Aarav Mehta",
-    role: "SOC Analyst (Demo)",
-    xp: 1450,
-    quizzesCompleted: 14,
-    accuracy: 94,
-    streak: 11,
-    isDemo: true,
-  },
-  {
-    id: "demo-peer-2",
-    name: "Priya Sharma",
-    role: "Cloud Engineer (Demo)",
-    xp: 1180,
-    quizzesCompleted: 11,
-    accuracy: 91,
-    streak: 8,
-    isDemo: true,
-  },
-  {
-    id: "demo-peer-3",
-    name: "Liam Chen",
-    role: "AppSec Lead (Demo)",
-    xp: 920,
-    quizzesCompleted: 9,
-    accuracy: 88,
-    streak: 6,
-    isDemo: true,
-  },
-  {
-    id: "demo-peer-4",
-    name: "Ananya Verma",
-    role: "Privacy Advocate (Demo)",
-    xp: 640,
-    quizzesCompleted: 7,
-    accuracy: 85,
-    streak: 5,
-    isDemo: true,
-  },
-  {
-    id: "demo-peer-5",
-    name: "Noah Patel",
-    role: "Security Student (Demo)",
-    xp: 380,
-    quizzesCompleted: 4,
-    accuracy: 79,
-    streak: 3,
-    isDemo: true,
-  },
-];
-
 export const DEMO_SAMPLE_ACTIVITIES: ActivityItem[] = [
   {
     id: "demo-act-1",
@@ -256,11 +213,11 @@ export const DEMO_SAMPLE_ACTIVITIES: ActivityItem[] = [
   },
   {
     id: "demo-act-3",
-    type: "quiz",
-    titleEn: "Completed Phishing & MFA assessment (4/5)",
-    titleHi: "फ़िशिंग और MFA क्विज़ पूरा किया (4/5)",
+    type: "breach",
+    titleEn: "Verified password k-Anonymity check in Breach Checker",
+    titleHi: "ब्रीच चेकर में k-Anonymity पासवर्ड जांच पूरी की",
     meta: "Demo Profile",
-    timestamp: new Date(Date.now() - 1000 * 60 * 420).toISOString(),
+    timestamp: new Date(Date.now() - 1000 * 60 * 320).toISOString(),
     isDemo: true,
   },
 ];

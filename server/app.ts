@@ -10,6 +10,12 @@ import {
   generateAiAssistantReply,
   resolveProviderConfig,
 } from "./services/aiProvider";
+import {
+  GoogleSafeBrowsingProvider,
+  UrlThreatValidationError,
+  validateSubmittedThreatUrl,
+  type UrlThreatIntelProvider,
+} from "./services/urlThreatIntel";
 
 export interface AppServerOptions {
   corsOrigin?: string;
@@ -17,6 +23,7 @@ export interface AppServerOptions {
   rateLimitWindowMs?: number;
   fetchImpl?: typeof fetch;
   env?: NodeJS.ProcessEnv;
+  urlThreatProvider?: UrlThreatIntelProvider;
 }
 
 export function createAssistantApp(options?: AppServerOptions) {
@@ -36,6 +43,10 @@ export function createAssistantApp(options?: AppServerOptions) {
     maxRequests: options?.rateLimitMax ?? Number(env.RATE_LIMIT_MAX || 15),
     windowMs: options?.rateLimitWindowMs ?? Number(env.RATE_LIMIT_WINDOW_MS || 60_000),
   });
+
+  const threatIntelProvider =
+    options?.urlThreatProvider ??
+    new GoogleSafeBrowsingProvider({ env, fetchImpl: options?.fetchImpl });
 
   app.get("/api/health", (_req: Request, res: Response) => {
     const cfg = resolveProviderConfig(env);
@@ -69,12 +80,37 @@ export function createAssistantApp(options?: AppServerOptions) {
     }
   );
 
+  // URL Threat Intelligence Lookup (never visits or fetches submitted URLs)
+  app.post(
+    "/api/phishing/threat-check",
+    limiter,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const rawUrl =
+          req.body && typeof req.body === "object"
+            ? (req.body as Record<string, unknown>).url
+            : undefined;
+        const safeUrl = validateSubmittedThreatUrl(rawUrl);
+        const result = await threatIntelProvider.checkUrl(safeUrl);
+        res.json(result);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
   // Handle malformed JSON & unexpected errors cleanly without leaking internals
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof SyntaxError && "body" in err) {
       return res.status(400).json({
         code: "MALFORMED_JSON",
         error: "Malformed JSON request body.",
+      });
+    }
+    if (err instanceof UrlThreatValidationError) {
+      return res.status(err.statusCode).json({
+        code: err.code,
+        error: err.message,
       });
     }
     if (err instanceof AiServiceError) {

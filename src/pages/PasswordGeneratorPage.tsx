@@ -42,7 +42,7 @@ const LENGTH_PRESETS = [12, 16, 24, 32, 64];
 const BATCH_COUNTS = [1, 3, 5, 8, 12];
 
 export const PasswordGeneratorPage: React.FC = () => {
-  const { t, settings, recordPasswordGenerated } = useApp();
+  const { t, settings, recordPasswordGenerated, setGeneratorContext } = useApp();
   const [mode, setMode] = useState<"random" | "passphrase">("random");
   const [batchCount, setBatchCount] = useState<number>(5);
 
@@ -72,8 +72,24 @@ export const PasswordGeneratorPage: React.FC = () => {
     return () => {
       setPrimarySecret("");
       setBatchSecrets([]);
+      setGeneratorContext(undefined);
     };
-  }, []);
+  }, [setGeneratorContext]);
+
+  useEffect(() => {
+    const enabledCount = [
+      pwOpts.uppercase,
+      pwOpts.lowercase,
+      pwOpts.numbers,
+      pwOpts.symbols,
+    ].filter(Boolean).length;
+    setGeneratorContext({
+      mode,
+      lengthOrWords: mode === "random" ? pwOpts.length : phraseOpts.wordCount,
+      enabledCharsetsCount: mode === "random" ? enabledCount : 4,
+      excludeAmbiguous: pwOpts.excludeAmbiguous,
+    });
+  }, [mode, pwOpts, phraseOpts.wordCount, setGeneratorContext]);
 
   const validationError = useMemo(() => {
     try {
@@ -207,7 +223,7 @@ export const PasswordGeneratorPage: React.FC = () => {
           <span>{t.generator.privacyNotice}</span>
         </div>
         <Badge variant="emerald" className="shrink-0 self-start sm:self-center font-mono text-[10px]">
-          CSPRNG • No Storage • No Logs
+          {t.generator.privacyPill}
         </Badge>
       </div>
 

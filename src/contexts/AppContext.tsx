@@ -9,6 +9,7 @@ import type {
   ActivityItem,
   HygieneChecklistItem,
   Language,
+  LiveToolContext,
   SanitizedCredentialSnapshot,
   ThemeMode,
   UserMetrics,
@@ -32,10 +33,6 @@ const DEFAULT_METRICS: UserMetrics = {
   breachChecksRun: 0,
   phishingScansRun: 0,
   threatsFlagged: 0,
-  quizzesCompleted: 0,
-  quizCorrectAnswers: 0,
-  quizTotalAnswered: 0,
-  bestQuizStreak: 0,
   xp: 0,
   usedHindiOrSwitchedLang: false,
 };
@@ -50,18 +47,41 @@ interface PersistedState {
   demoPreviewActive: boolean;
 }
 
+const VALID_ACTIVITY_TYPES = new Set([
+  "analyzer",
+  "generator",
+  "breach",
+  "phishing",
+  "hygiene",
+]);
+
 function loadInitialState(): PersistedState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PersistedState>;
+      const rawMetrics = (parsed.metrics || {}) as Partial<UserMetrics>;
+      const cleanMetrics: UserMetrics = {
+        passwordsAudited: Number(rawMetrics.passwordsAudited) || 0,
+        bestEntropySeen: Number(rawMetrics.bestEntropySeen) || 0,
+        passwordsGenerated: Number(rawMetrics.passwordsGenerated) || 0,
+        breachChecksRun: Number(rawMetrics.breachChecksRun) || 0,
+        phishingScansRun: Number(rawMetrics.phishingScansRun) || 0,
+        threatsFlagged: Number(rawMetrics.threatsFlagged) || 0,
+        xp: Number(rawMetrics.xp) || 0,
+        usedHindiOrSwitchedLang: Boolean(rawMetrics.usedHindiOrSwitchedLang),
+      };
+      const cleanActivities = Array.isArray(parsed.activities)
+        ? parsed.activities.filter((a) => VALID_ACTIVITY_TYPES.has(a?.type))
+        : [];
+
       return {
         theme: parsed.theme === "light" ? "light" : "dark",
         language: parsed.language === "hi" ? "hi" : "en",
         settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
-        metrics: { ...DEFAULT_METRICS, ...(parsed.metrics || {}) },
+        metrics: cleanMetrics,
         hygiene: parsed.hygiene?.length ? parsed.hygiene : INITIAL_HYGIENE_CHECKLIST,
-        activities: Array.isArray(parsed.activities) ? parsed.activities : [],
+        activities: cleanActivities,
         demoPreviewActive: Boolean(parsed.demoPreviewActive),
       };
     }
@@ -96,6 +116,11 @@ interface AppContextValue {
   postureScore: number;
   sessionSnapshot: SanitizedCredentialSnapshot | null;
   setSessionSnapshot: (snapshot: SanitizedCredentialSnapshot | null) => void;
+  liveToolContext: LiveToolContext;
+  setAnalyzerContext: (ctx: LiveToolContext["analyzer"] | undefined) => void;
+  setGeneratorContext: (ctx: LiveToolContext["generator"] | undefined) => void;
+  setBreachContext: (ctx: LiveToolContext["breach"] | undefined) => void;
+  setPhishingContext: (ctx: LiveToolContext["phishing"] | undefined) => void;
   updateSessionBreachStatus: (
     status: SanitizedCredentialSnapshot["breachStatus"],
     count: number
@@ -104,7 +129,6 @@ interface AppContextValue {
   recordPasswordGenerated: (entropyBits: number) => void;
   recordBreachCheck: (exposed: boolean, labelEn: string, labelHi: string) => void;
   recordPhishingScan: (flagged: boolean, riskScore: number) => void;
-  recordQuizResult: (correctCount: number, totalCount: number, streak: number, xpEarned: number) => void;
   loadDemoPreview: () => void;
   clearDemoPreview: () => void;
   resetAllData: () => void;
@@ -117,6 +141,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Strictly volatile in-memory sanitized report snapshot (never persisted to localStorage)
   const [sessionSnapshot, setSessionSnapshot] =
     useState<SanitizedCredentialSnapshot | null>(null);
+  // Strictly volatile non-sensitive telemetry per tool for context-aware assistant
+  const [liveToolContext, setLiveToolContext] = useState<LiveToolContext>({});
+
+  const setAnalyzerContext = React.useCallback(
+    (analyzer: LiveToolContext["analyzer"] | undefined) =>
+      setLiveToolContext((prev) => ({ ...prev, analyzer })),
+    []
+  );
+  const setGeneratorContext = React.useCallback(
+    (generator: LiveToolContext["generator"] | undefined) =>
+      setLiveToolContext((prev) => ({ ...prev, generator })),
+    []
+  );
+  const setBreachContext = React.useCallback(
+    (breach: LiveToolContext["breach"] | undefined) =>
+      setLiveToolContext((prev) => ({ ...prev, breach })),
+    []
+  );
+  const setPhishingContext = React.useCallback(
+    (phishing: LiveToolContext["phishing"] | undefined) =>
+      setLiveToolContext((prev) => ({ ...prev, phishing })),
+    []
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -126,6 +173,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       root.classList.remove("dark");
     }
   }, [state.theme]);
+
+  useEffect(() => {
+    document.documentElement.lang = state.language;
+  }, [state.language]);
 
   useEffect(() => {
     try {
@@ -260,30 +311,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }),
     }));
 
-  const recordQuizResult = (
-    correctCount: number,
-    totalCount: number,
-    streak: number,
-    xpEarned: number
-  ) =>
-    setState((prev) => ({
-      ...prev,
-      metrics: {
-        ...prev.metrics,
-        quizzesCompleted: prev.metrics.quizzesCompleted + 1,
-        quizCorrectAnswers: prev.metrics.quizCorrectAnswers + correctCount,
-        quizTotalAnswered: prev.metrics.quizTotalAnswered + totalCount,
-        bestQuizStreak: Math.max(prev.metrics.bestQuizStreak, streak),
-        xp: prev.metrics.xp + xpEarned,
-      },
-      activities: appendActivity(prev, {
-        type: "quiz",
-        titleEn: `Completed Security Quiz (${correctCount}/${totalCount} correct)`,
-        titleHi: `सुरक्षा क्विज़ पूरा किया (${correctCount}/${totalCount} सही)`,
-        meta: `+${xpEarned} XP`,
-      }),
-    }));
-
   const loadDemoPreview = () =>
     setState((prev) => ({
       ...prev,
@@ -296,10 +323,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         breachChecksRun: Math.max(prev.metrics.breachChecksRun, 3),
         phishingScansRun: Math.max(prev.metrics.phishingScansRun, 4),
         threatsFlagged: Math.max(prev.metrics.threatsFlagged, 2),
-        quizzesCompleted: Math.max(prev.metrics.quizzesCompleted, 2),
-        quizCorrectAnswers: Math.max(prev.metrics.quizCorrectAnswers, 7),
-        quizTotalAnswered: Math.max(prev.metrics.quizTotalAnswered, 8),
-        bestQuizStreak: Math.max(prev.metrics.bestQuizStreak, 5),
         xp: Math.max(prev.metrics.xp, 520),
       },
       hygiene: prev.hygiene.map((h, idx) => (idx < 3 ? { ...h, completed: true } : h)),
@@ -327,6 +350,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetAllData = () => {
     localStorage.removeItem(STORAGE_KEY);
     setSessionSnapshot(null);
+    setLiveToolContext({});
     setState({
       theme: state.theme,
       language: state.language,
@@ -342,18 +366,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const hygieneWeight = state.hygiene.reduce(
       (sum, item) => sum + (item.completed ? item.weight : 0),
       0
-    ); // 0..100 -> contributes 45%
-    const quizAcc =
-      state.metrics.quizTotalAnswered > 0
-        ? (state.metrics.quizCorrectAnswers / state.metrics.quizTotalAnswered) * 100
-        : 0; // contributes 25%
-    const entropyFactor = Math.min(100, (state.metrics.bestEntropySeen / 80) * 100); // 20%
+    ); // 0..100 -> contributes 55%
+    const entropyFactor = Math.min(100, (state.metrics.bestEntropySeen / 80) * 100); // 25%
     const activeToolUsage = Math.min(
       100,
       (state.metrics.passwordsAudited + state.metrics.breachChecksRun + state.metrics.phishingScansRun) * 20
-    ); // 10%
+    ); // 20%
     return Math.round(
-      hygieneWeight * 0.45 + quizAcc * 0.25 + entropyFactor * 0.2 + activeToolUsage * 0.1
+      hygieneWeight * 0.55 + entropyFactor * 0.25 + activeToolUsage * 0.2
     );
   }, [state.hygiene, state.metrics]);
 
@@ -374,12 +394,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     postureScore,
     sessionSnapshot,
     setSessionSnapshot,
+    liveToolContext,
+    setAnalyzerContext,
+    setGeneratorContext,
+    setBreachContext,
+    setPhishingContext,
     updateSessionBreachStatus,
     recordPasswordAudit,
     recordPasswordGenerated,
     recordBreachCheck,
     recordPhishingScan,
-    recordQuizResult,
     loadDemoPreview,
     clearDemoPreview,
     resetAllData,

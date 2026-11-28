@@ -29,13 +29,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const SAMPLE_TEST_PASSWORDS = [
-  { label: "Very Weak (123456)", value: "123456" },
-  { label: "Weak (dragon99!)", value: "dragon99!" },
-  { label: "Fair (Summer2026!)", value: "Summer2026!" },
-  { label: "Very Strong (timber-lantern-quartz-49!)", value: "timber-lantern-quartz-49!" },
-];
-
 const METER_SEGMENTS: Array<{
   level: StrengthLevel;
   colorClass: string;
@@ -49,7 +42,8 @@ const METER_SEGMENTS: Array<{
 ];
 
 export const PasswordAnalyzerPage: React.FC = () => {
-  const { t, language, settings, recordPasswordAudit, setSessionSnapshot } = useApp();
+  const { t, language, settings, recordPasswordAudit, setSessionSnapshot, setAnalyzerContext } =
+    useApp();
   const [password, setPassword] = useState("");
   const [contextInput, setContextInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -61,8 +55,9 @@ export const PasswordAnalyzerPage: React.FC = () => {
       setPassword("");
       setContextInput("");
       setShowPassword(false);
+      setAnalyzerContext(undefined);
     };
-  }, []);
+  }, [setAnalyzerContext]);
 
   const result = useMemo(() => {
     const tokens = contextInput
@@ -74,6 +69,23 @@ export const PasswordAnalyzerPage: React.FC = () => {
       strictMode: settings.strictAnalyzerMode,
     });
   }, [password, contextInput, settings.strictAnalyzerMode]);
+
+  useEffect(() => {
+    if (!password || result.level === "empty") {
+      setAnalyzerContext(undefined);
+      return;
+    }
+    // Expose strictly non-sensitive numeric/structural telemetry to the context-aware assistant
+    setAnalyzerContext({
+      score: result.score,
+      level: result.level,
+      length: result.length,
+      entropyBits: result.entropyBits,
+      effectiveEntropyBits: result.effectiveEntropyBits,
+      weaknessIds: result.weaknesses.map((w) => w.id),
+      crackTimes: result.crackTimes,
+    });
+  }, [password, result, setAnalyzerContext]);
 
   const handleClearMemory = () => {
     setPassword("");
@@ -124,6 +136,13 @@ export const PasswordAnalyzerPage: React.FC = () => {
       ? "secondary"
       : "destructive";
 
+  const SAMPLE_TEST_PASSWORDS = [
+    { label: t.analyzer.sampleVeryWeak, value: "123456" },
+    { label: t.analyzer.sampleWeak, value: "dragon99!" },
+    { label: t.analyzer.sampleFair, value: "Summer2026!" },
+    { label: t.analyzer.sampleVeryStrong, value: "timber-lantern-quartz-49!" },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-up">
       <PageHeader
@@ -132,7 +151,7 @@ export const PasswordAnalyzerPage: React.FC = () => {
         badge={
           <Badge variant="emerald">
             <Lock className="h-3 w-3" />
-            In-Memory Only • zxcvbn
+            {t.analyzer.badgeLabel}
           </Badge>
         }
       />
@@ -147,7 +166,7 @@ export const PasswordAnalyzerPage: React.FC = () => {
           </div>
         </div>
         <Badge variant="emerald" className="shrink-0 self-start sm:self-center font-mono text-[10px]">
-          0 Network • 0 Storage • 0 Logs
+          {t.analyzer.privacyPill}
         </Badge>
       </div>
 
@@ -185,8 +204,16 @@ export const PasswordAnalyzerPage: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  title={showPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showPassword
+                      ? t.analyzer.hidePasswordAria
+                      : t.analyzer.showPasswordAria
+                  }
+                  title={
+                    showPassword
+                      ? t.analyzer.hidePasswordAria
+                      : t.analyzer.showPasswordAria
+                  }
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
@@ -196,8 +223,8 @@ export const PasswordAnalyzerPage: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={handleClearMemory}
-                    aria-label="Clear password from memory"
-                    title="Clear password from memory"
+                    aria-label={t.analyzer.clearPasswordAria}
+                    title={t.analyzer.clearPasswordAria}
                   >
                     <Eraser className="h-4 w-4" />
                   </Button>
@@ -267,7 +294,9 @@ export const PasswordAnalyzerPage: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="text-xs text-muted-foreground mr-1">Test samples:</span>
+              <span className="text-xs text-muted-foreground mr-1">
+                {t.analyzer.testSamplesLabel}
+              </span>
               {SAMPLE_TEST_PASSWORDS.map((sample) => (
                 <Button
                   key={sample.label}
@@ -350,7 +379,7 @@ export const PasswordAnalyzerPage: React.FC = () => {
 
               <div className="flex items-center justify-between pt-1 text-xs">
                 <span className="text-muted-foreground">
-                  {t.analyzer.poolSizeLabel}: <strong className="font-mono text-foreground">{result.poolSize}</strong> • Len:{" "}
+                  {t.analyzer.poolSizeLabel}: <strong className="font-mono text-foreground">{result.poolSize}</strong> • {t.common.lenShort}:{" "}
                   <strong className="font-mono text-foreground">{result.length}</strong>
                 </span>
                 <Badge variant={result.nistCompliant ? "emerald" : "destructive"}>
@@ -374,26 +403,26 @@ export const PasswordAnalyzerPage: React.FC = () => {
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {[
               {
-                label: `Length (${result.length} chars • 12+ ideal)`,
+                label: `${t.analyzer.checks.lengthIdeal} (${result.length} ${t.common.charsUnit})`,
                 ok: result.length >= 12,
                 warn: result.length > 0 && result.length < 12,
               },
-              { label: "Uppercase (A-Z)", ok: result.hasUpper, warn: false },
-              { label: "Lowercase (a-z)", ok: result.hasLower, warn: false },
-              { label: "Digits (0-9)", ok: result.hasDigit, warn: false },
-              { label: "Special Characters (!@#...)", ok: result.hasSymbol, warn: false },
+              { label: t.analyzer.checks.uppercase, ok: result.hasUpper, warn: false },
+              { label: t.analyzer.checks.lowercase, ok: result.hasLower, warn: false },
+              { label: t.analyzer.checks.digits, ok: result.hasDigit, warn: false },
+              { label: t.analyzer.checks.symbols, ok: result.hasSymbol, warn: false },
               {
-                label: "No Repeated Characters",
+                label: t.analyzer.checks.noRepeats,
                 ok: result.length > 0 && !result.hasRepeatedChars,
                 warn: result.hasRepeatedChars,
               },
               {
-                label: "No Sequential Patterns",
+                label: t.analyzer.checks.noSequences,
                 ok: result.length > 0 && !result.hasSequentialPattern,
                 warn: result.hasSequentialPattern,
               },
               {
-                label: "No Dictionary / Common Words",
+                label: t.analyzer.checks.noDict,
                 ok: result.length > 0 && !result.hasDictionaryOrCommon,
                 warn: result.hasDictionaryOrCommon,
               },
@@ -489,7 +518,9 @@ export const PasswordAnalyzerPage: React.FC = () => {
           <CardContent className="space-y-3">
             {result.zxcvbnPatterns.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pb-1">
-                <span className="text-xs text-muted-foreground mr-1">zxcvbn matches:</span>
+                <span className="text-xs text-muted-foreground mr-1">
+                  {t.analyzer.zxcvbnMatchesLabel}
+                </span>
                 {result.zxcvbnPatterns.map((p, idx) => (
                   <Badge key={idx} variant="outline" className="font-mono text-[10px]">
                     {p.pattern}

@@ -3,13 +3,11 @@ import {
   Bot,
   FileBarChart2,
   FishOff,
-  GraduationCap,
   KeyRound,
   LayoutDashboard,
   Radar,
   Settings,
   ShieldAlert,
-  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import type { TranslationSchema } from "@/i18n/en";
@@ -97,16 +95,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
     descHi: "स्वच्छता सूची, टेलीमेट्री और प्रिंटेबल रिपोर्ट",
   },
   {
-    id: "quiz",
-    path: "/quiz",
-    labelKey: "quiz",
-    group: "learning",
-    icon: GraduationCap,
-    accentColor: "text-sky-400",
-    descEn: "Bilingual security scenarios & XP challenges",
-    descHi: "द्विभाषी सुरक्षा प्रश्नोत्तरी और XP प्रशिक्षण",
-  },
-  {
     id: "achievements",
     path: "/achievements",
     labelKey: "achievements",
@@ -115,16 +103,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
     accentColor: "text-emerald-400",
     descEn: "Unlock badges through real security actions",
     descHi: "सुरक्षा गतिविधियों से उपलब्धियां और बैज अनलॉक करें",
-  },
-  {
-    id: "leaderboard",
-    path: "/leaderboard",
-    labelKey: "leaderboard",
-    group: "learning",
-    icon: Trophy,
-    accentColor: "text-amber-400",
-    descEn: "Compare XP against demo community peers",
-    descHi: "डेमो समुदाय के साथ अपने XP की तुलना करें",
   },
   {
     id: "settings",

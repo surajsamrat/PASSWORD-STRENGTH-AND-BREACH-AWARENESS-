@@ -103,7 +103,7 @@ export const DashboardPage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="default">
                   <Sparkles className="h-3 w-3" />
-                  {t.brand.name} Intelligence
+                  {t.brand.intelligenceTag}
                 </Badge>
                 <Badge variant="emerald">{t.common.liveLocal}</Badge>
                 {demoPreviewActive && <DemoBadge />}
@@ -111,7 +111,7 @@ export const DashboardPage: React.FC = () => {
 
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 {t.dashboard.welcomeTitle}{" "}
-                <span className="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-sky-600 to-emerald-600 dark:from-sky-400 dark:to-emerald-400 bg-clip-text text-transparent">
                   {settings.displayName}
                 </span>
               </h1>
@@ -183,11 +183,7 @@ export const DashboardPage: React.FC = () => {
         <StatCard
           title={t.dashboard.stats.passwordsAudited}
           value={metrics.passwordsAudited}
-          hint={
-            language === "hi"
-              ? "केवल स्थानीय मीट्रिक सहेजा गया"
-              : "Zero-plaintext local counter"
-          }
+          hint={t.dashboard.stats.localCounterHint}
           icon={ShieldAlert}
           accent="blue"
           badge={demoPreviewActive ? <DemoBadge /> : undefined}
@@ -195,29 +191,21 @@ export const DashboardPage: React.FC = () => {
         <StatCard
           title={t.dashboard.stats.bestEntropy}
           value={`${Math.round(metrics.bestEntropySeen)} bits`}
-          hint={language === "hi" ? "लक्ष्य: 80+ बिट्स" : "Target: 80+ bits"}
+          hint={t.dashboard.stats.entropyTargetHint}
           icon={Cpu}
           accent="emerald"
         />
         <StatCard
           title={t.dashboard.stats.threatsFlagged}
           value={metrics.threatsFlagged}
-          hint={
-            language === "hi"
-              ? "ब्रीच और फ़िशिंग जांच से"
-              : "From breach & phishing scans"
-          }
+          hint={t.dashboard.stats.threatsHint}
           icon={FishOff}
           accent="amber"
         />
         <StatCard
           title={t.dashboard.stats.hygieneCompleted}
           value={`${hygieneDone}/${hygiene.length}`}
-          hint={
-            language === "hi"
-              ? `${metrics.quizzesCompleted} क्विज़ पूरे हुए`
-              : `${metrics.quizzesCompleted} quiz session(s) completed`
-          }
+          hint={`${metrics.passwordsGenerated} ${t.dashboard.stats.secretsGeneratedHint}`}
           icon={CheckCircle2}
           accent="emerald"
         />
@@ -359,10 +347,10 @@ export const DashboardPage: React.FC = () => {
         </Card>
       </section>
 
-      {/* 5. Feature Navigation Grid */}
+      {/* 5. Feature Navigation Grid (8 modules -> 2x4 balanced desktop grid) */}
       <section className="space-y-3">
         <h2 className="text-lg font-bold tracking-tight">{t.dashboard.featureNavTitle}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {featureCards.map((item) => {
             const Icon = item.icon;
             return (

@@ -3,6 +3,7 @@ export const en = {
     name: "SecureCheck",
     subtitle: "Password Intelligence & Cybersecurity Awareness Platform",
     localBadge: "Local-First Privacy",
+    intelligenceTag: "SecureCheck Intelligence",
   },
   nav: {
     overviewGroup: "Command Center",
@@ -16,9 +17,7 @@ export const en = {
     assistant: "AI Security Assistant",
     phishing: "Phishing Detector",
     report: "Security Report",
-    quiz: "Cybersecurity Quiz",
     achievements: "Achievements",
-    leaderboard: "Leaderboard",
     settings: "Settings",
   },
   common: {
@@ -40,14 +39,49 @@ export const en = {
     xp: "XP",
     viewAll: "Open Module",
     status: "Status",
+    detected: "Detected",
+    none: "None",
+    valid: "Valid",
+    invalid: "Invalid",
+    operatorLabel: "Operator",
+    lenShort: "Len",
+    charsUnit: "chars",
+  },
+  errors: {
+    CLIENT_PRIVACY_BLOCK:
+      "Privacy Block: Never paste your actual password or complete SHA-1 hash into AI chat.",
+    BACKEND_UNREACHABLE:
+      "AI backend server is unreachable. Start the server (`npm run server`) or switch to the Offline Security Guide.",
+    AI_NOT_CONFIGURED:
+      "Gemini AI is not configured yet. Paste your GEMINI_API_KEY into .env and restart the backend, or use the Offline Security Guide.",
+    RATE_LIMIT_EXCEEDED:
+      "Rate limit reached. Please wait a few seconds before sending another request.",
+    PRIVACY_VIOLATION:
+      "Request rejected by privacy firewall: passwords and complete SHA-1 hashes are never allowed.",
+    PRIVACY_FORBIDDEN_FIELD:
+      "Request rejected: sensitive credential fields are forbidden.",
+    INVALID_MESSAGE: "Please enter a valid non-empty message.",
+    MESSAGE_TOO_LONG: "Message exceeds the 2000-character limit.",
+    AI_TIMEOUT: "Gemini AI request timed out. Please retry or use the Offline Security Guide.",
+    AI_NETWORK_ERROR:
+      "Gemini AI is currently unavailable. Please retry or use the Offline Security Guide.",
+    UPSTREAM_AI_ERROR:
+      "Gemini AI could not process the request. Check your API key/quota or try again.",
+    UNKNOWN_ERROR: "An unexpected error occurred. Please try again.",
+    HIBP_NETWORK_ERROR:
+      "Unable to reach api.pwnedpasswords.com (network offline or blocked). SecureCheck never fakes a clean result.",
+    HIBP_INVALID_RESPONSE:
+      "Received an empty or invalid payload from Have I Been Pwned.",
   },
   dashboard: {
     welcomeTitle: "Welcome back,",
     welcomeSubtitle:
       "Monitor your cryptographic hygiene, audit credentials locally, and sharpen threat detection skills.",
     postureTitle: "Security Posture Score",
-    postureSubtitle: "Computed live from your local audits, quiz accuracy, and cyber hygiene checklist.",
-    loadDemoBanner: "Viewing fresh local workspace. Complete tools below or preview sample metrics.",
+    postureSubtitle:
+      "Computed live from your local audits, entropy benchmarks, and cyber hygiene checklist.",
+    loadDemoBanner:
+      "Viewing fresh local workspace. Complete tools below or preview sample metrics.",
     previewDemoBtn: "Load Demo Preview",
     clearDemoBtn: "Clear Demo Data",
     stats: {
@@ -55,24 +89,40 @@ export const en = {
       bestEntropy: "Peak Entropy Tested",
       threatsFlagged: "Threats Flagged",
       hygieneCompleted: "Hygiene Checklist",
+      localCounterHint: "Zero-plaintext local counter",
+      entropyTargetHint: "Target: 80+ bits",
+      threatsHint: "From breach & phishing scans",
+      secretsGeneratedHint: "CSPRNG secret(s) generated",
     },
     quickActionsTitle: "Quick Security Actions",
-    recentActivityTitle: "Recent Learning & Security Activity",
-    emptyActivity: "No activity recorded yet. Run a password audit, phishing scan, or quiz to populate your live timeline.",
+    recentActivityTitle: "Recent Security Activity",
+    emptyActivity:
+      "No activity recorded yet. Run a password audit, breach check, or phishing scan to populate your live timeline.",
     featureNavTitle: "Platform Modules",
     securityTipsTitle: "Actionable Security Intelligence",
     nextTip: "Next Tip",
   },
   analyzer: {
     title: "Smart Password Analyzer",
-    subtitle: "Powered by zxcvbn + independent entropy & pattern analysis. Runs strictly in browser memory.",
+    subtitle:
+      "Powered by zxcvbn + independent entropy & pattern analysis. Runs strictly in browser memory.",
+    badgeLabel: "In-Memory Only • zxcvbn",
+    privacyPill: "0 Network • 0 Storage • 0 Logs",
     privacyTitle: "Zero-Storage Privacy Guarantee",
     privacyBanner:
       "Passwords stay strictly in volatile browser memory—never stored, never logged, never transmitted, and automatically cleared when you leave this page.",
     inputLabel: "Enter password to inspect",
     inputPlaceholder: "Type or paste a test password...",
+    showPasswordAria: "Show password",
+    hidePasswordAria: "Hide password",
+    clearPasswordAria: "Clear password from memory",
     contextLabel: "Personal context check (optional: name, email, username)",
     contextPlaceholder: "e.g. alex, companyname",
+    testSamplesLabel: "Test samples:",
+    sampleVeryWeak: "Very Weak (123456)",
+    sampleWeak: "Weak (dragon99!)",
+    sampleFair: "Fair (Summer2026!)",
+    sampleVeryStrong: "Very Strong (timber-lantern-quartz-49!)",
     recordAuditBtn: "Save Anonymous Score Only",
     auditSavedMsg: "Anonymous numeric score updated (password value is never stored).",
     strengthMeterLabel: "Real-Time Strength Meter",
@@ -81,14 +131,26 @@ export const en = {
     rawEntropyLabel: "Effective Entropy",
     poolSizeLabel: "Character Pool",
     zxcvbnScoreLabel: "zxcvbn Score",
+    zxcvbnMatchesLabel: "zxcvbn matches:",
     nistLabel: "NIST SP 800-63B",
     compliant: "Meets Baseline",
     nonCompliant: "Below Baseline",
     crackTimesTitle: "Estimated Crack Times (zxcvbn + Offline Models)",
     weaknessesTitle: "Detected Patterns & Weaknesses",
-    noWeaknesses: "No repeated chars, sequential patterns, dictionary words, or common passwords detected.",
+    noWeaknesses:
+      "No repeated chars, sequential patterns, dictionary words, or common passwords detected.",
     recommendationsTitle: "Detailed Improvement Suggestions",
     charBreakdownTitle: "Character & Pattern Checks",
+    checks: {
+      lengthIdeal: "Length (12+ chars ideal)",
+      uppercase: "Uppercase (A-Z)",
+      lowercase: "Lowercase (a-z)",
+      digits: "Digits (0-9)",
+      symbols: "Special Characters (!@#...)",
+      noRepeats: "No Repeated Characters",
+      noSequences: "No Sequential Patterns",
+      noDict: "No Dictionary / Common Words",
+    },
     levels: {
       empty: "Awaiting Input",
       "very-weak": "Very Weak",
@@ -100,7 +162,9 @@ export const en = {
   },
   generator: {
     title: "Secure Password & Passphrase Generator",
-    subtitle: "Unbiased crypto.getRandomValues() generator for 8–64 char secrets and diceware passphrases.",
+    subtitle:
+      "Unbiased crypto.getRandomValues() generator for 8–64 char secrets and diceware passphrases.",
+    privacyPill: "CSPRNG • No Storage • No Logs",
     privacyNotice:
       "Generated secrets live only in browser memory—never saved, never logged, and cleared automatically when leaving this page.",
     modeRandom: "Cryptographic Password",
@@ -122,52 +186,103 @@ export const en = {
     batchTitle: "Multiple Generated Candidates",
     strengthTitle: "Live Strength Analysis",
     offlineCrackLabel: "Est. Offline Crack Time",
-    invalidNoCharset: "Select at least one character set (Uppercase, Lowercase, Numbers, or Symbols) to generate passwords.",
+    invalidNoCharset:
+      "Select at least one character set (Uppercase, Lowercase, Numbers, or Symbols) to generate passwords.",
     invalidLength: "Length must be between 8 and 64 characters.",
     clipboardNote: "Session-only output. Auto-clear timer:",
   },
   breach: {
     title: "Breach Checker",
-    subtitle: "Verify password exposure via live HIBP k-Anonymity, plus clearly labeled Demo Email Breach awareness.",
+    subtitle:
+      "Verify password exposure via live HIBP k-Anonymity, plus clearly labeled Demo Email Breach awareness.",
+    badgeLabel: "k-Anonymity SHA-1",
+    prefixOnlyPill: "5-Char Prefix Only • No Hash Storage",
     tabPassword: "Password k-Anonymity (Live API)",
     tabEmail: "Email Breach Awareness (Demo)",
     pwInputLabel: "Password to check securely",
     pwPlaceholder: "Enter password to check against Pwned Passwords...",
     checkPwBtn: "Check Exposure Safely",
-    kAnonNotice: "Zero-knowledge k-Anonymity: SHA-1 is computed in your browser and only the first 5 hex characters are sent to api.pwnedpasswords.com.",
+    checkingMsg:
+      "Computing SHA-1 locally and querying HIBP range with 5-character prefix...",
+    kAnonNotice:
+      "Zero-knowledge k-Anonymity: SHA-1 is computed in your browser and only the first 5 hex characters are sent to api.pwnedpasswords.com.",
     pwnedAlert: "Exposed in Public Breaches",
     cleanAlert: "Not Found in Pwned Passwords",
+    occurrencesUnit: "occurrences",
+    prefixSentLabel: "SHA-1 Prefix Sent",
+    rangeCheckedLabel: "Range Suffixes Checked",
+    paddedIgnoredLabel: "zero-count padded entries ignored",
+    recommendationsHeading: "Security Recommendations",
+    errorHeading: "Live API Request Failed",
+    computedPrefixLabel: "Computed Local SHA-1 Prefix",
     emailDemoNotice:
       "Demo Mode Only: Live email breach lookup requires a paid server-side HIBP API key. Try sample addresses below to preview breach triage.",
     emailInputLabel: "Sample Email Address",
     checkEmailBtn: "Inspect Demo Breach Profile",
+    demoProfilesLabel: "Demo profiles:",
+    noDemoRecords: "No simulated demo records exist for this address. Select a Demo profile above.",
   },
   assistant: {
     title: "AI Security Assistant",
-    subtitle: "Server-backed cybersecurity advisor in English & Hindi. Keys stay on the server; passwords and hashes never leave your device.",
+    subtitle:
+      "Server-backed cybersecurity advisor in English & Hindi. Keys stay on the server; passwords and hashes never leave your device.",
     modeBadge: "Server AI Proxy",
     offlineBadge: "Offline Playbook Mode",
+    checkingServer: "Checking server...",
     serverConnected: "Server AI Connected",
     serverUnconfigured: "Server Key Not Configured",
     serverOffline: "Backend Server Offline",
-    placeholder: "Ask about password weaknesses, entropy, phishing risks, passkeys, or breach recovery...",
+    responseLangLabel: "AI Response Language",
+    placeholder:
+      "Ask about password weaknesses, entropy, phishing risks, passkeys, or breach recovery...",
     send: "Send",
     thinking: "Analyzing securely with AI assistant...",
     clearChat: "Clear Chat",
-    includeMetadataLabel: "Attach non-sensitive posture metadata (never passwords or hashes)",
+    includeMetadataLabel:
+      "Attach non-sensitive posture metadata (never passwords or hashes)",
     offlineFallbackBtn: "Get Offline Playbook Answer",
     disclaimer:
       "Strict Privacy Guardrail: Never send actual passwords or complete hashes. Chat history stays in volatile browser memory only and is cleared when leaving this page.",
   },
   phishing: {
-    title: "Phishing Detector",
-    subtitle: "Client-side heuristic inspector for suspicious URLs, typosquatted domains, and social-engineering text.",
-    urlLabel: "Suspicious URL (optional)",
+    title: "Phishing URL Awareness & Detection",
+    subtitle:
+      "Inspect URL syntax, IP hosts, misleading subdomains, shorteners, and social-engineering keywords without ever visiting the link.",
+    badgeLabel: "Heuristics + Threat Intel",
+    safetyBanner:
+      "Zero-Visit Guarantee: Submitted URLs are NEVER opened, clicked, or fetched by your browser or backend. Neither heuristics nor threat feeds guarantee 100% detection.",
+    urlLabel: "Suspicious URL to Inspect",
     urlPlaceholder: "https://example.com/login",
-    textLabel: "Email, SMS, or Chat Message Content (optional)",
+    textLabel: "Optional Email, SMS, or Chat Message Content",
     textPlaceholder: "Paste suspicious email or SMS text here...",
-    samplesTitle: "Load Curated Test Case",
-    indicatorsTitle: "Triggered Heuristic Indicators",
+    samplesTitle: "Load Curated Awareness Samples",
+    riskCategoryTitle: "Heuristic Risk Category",
+    heuristicBadge: "Heuristic Pattern Warning (Not Verified Threat Intel)",
+    threatIntelTitle: "Verified Threat Intelligence Lookup",
+    threatIntelSubtitle:
+      "Server-side lookup interface (Google Safe Browsing v4) — clearly separated from local heuristic warnings.",
+    apiLookupBadge: "API Lookup",
+    threatCheckingMsg: "Querying server threat intelligence interface...",
+    threatSkippedMsg:
+      "Threat intelligence lookup skipped because URL syntax is invalid or uses an unsupported scheme.",
+    threatEmptyMsg:
+      "Submit a valid HTTP/HTTPS URL to query the threat intelligence interface.",
+    anatomyTitle: "Non-Clickable URL Anatomy Breakdown",
+    anatomyProtocol: "Protocol",
+    anatomyRoot: "Root Domain",
+    anatomySubdomains: "Subdomain(s)",
+    anatomyPath: "Path/Query",
+    anatomyNone: "(none)",
+    detectionMatrixTitle: "URL & Domain Inspection Checks",
+    matrixLabels: {
+      syntax: "URL Syntax Valid",
+      ipHost: "IP-Based Host",
+      subdomain: "Misleading Subdomain",
+      shortener: "URL Shortener",
+      domainPattern: "Suspicious Domain Pattern",
+      keywords: "Suspicious Keywords",
+    },
+    indicatorsTitle: "Triggered Heuristic Indicators & Explanations",
     adviceTitle: "Recommended Defensive Actions",
     noIndicators: "No heuristic anomalies triggered for the provided input.",
     riskLabels: {
@@ -179,7 +294,9 @@ export const en = {
   },
   report: {
     title: "Security Risk Report",
-    subtitle: "Sanitized visual risk assessment combining credential strength, entropy, breach status, hygiene controls, and estimate limitations.",
+    subtitle:
+      "Sanitized visual risk assessment combining credential strength, entropy, breach status, hygiene controls, and estimate limitations.",
+    sanitizedBadge: "Sanitized Report",
     downloadPdf: "Download PDF Report",
     clearSession: "Clear Session Audit",
     privacyBanner:
@@ -187,11 +304,19 @@ export const en = {
     hygieneTitle: "Interactive Security Hygiene Checklist",
     metricsBreakdown: "Assessment Telemetry",
     postureGrade: "Overall Security Assessment",
+    riskSuffix: "risk",
     credentialSection: "Credential Risk Snapshot (In-Memory Sanitized)",
+    plaintextOmittedNote: "plaintext omitted",
     noCredentialYet:
-      "No credential snapshot attached yet. Evaluate a password in Password Analyzer (or click Attach to Report) to include strength, entropy, crack-time assumptions, and breach status.",
+      "No credential snapshot attached yet. Evaluate a password in Password Analyzer (or below) to include strength, entropy, crack-time assumptions, and breach status.",
+    strengthCatLabel: "Strength Category",
+    entropyEstLabel: "Entropy Estimate",
     crackAssumptionsTitle: "Crack-Time Assumptions & Estimates",
     breachStatusTitle: "Breach-Check Status (k-Anonymity)",
+    breachPwnedPrefix: "Exposed in public breaches",
+    breachCleanMsg: "Not found in HIBP public password corpus",
+    breachErrorMsg: "Breach check failed / unavailable",
+    breachNotCheckedMsg: "Not checked yet — run Breach Checker to attach status",
     weaknessesTitle: "Identified Weaknesses (Sanitized)",
     recommendationsTitle: "Improvement Recommendations",
     limitationsTitle: "Limitations of Estimates & Important Disclaimers",
@@ -200,50 +325,45 @@ export const en = {
   },
   improvement: {
     title: "Smart Password Improvement Advisor",
-    subtitle: "Identifies weak characteristics, explains repeated & sequential patterns, suggests unique passphrases, and outlines actionable steps.",
+    subtitle:
+      "Identifies weak characteristics, explains repeated & sequential patterns, suggests unique passphrases, and outlines actionable steps.",
+    actionableBadge: "Actionable Guidance",
     weakTraitsTitle: "Weak Characteristics Identified",
-    noWeakTraits: "No major structural weaknesses detected—continue pairing with uniqueness and MFA.",
+    noWeakTraits:
+      "No major structural weaknesses detected—continue pairing with uniqueness and MFA.",
     lengthGuidanceTitle: "Longer Password Strategy",
     patternExplanationsTitle: "Understanding Repeated & Sequential Patterns",
     passphraseSuggestionsTitle: "Suggested Unique Memorable Passphrases",
     refreshPassphrases: "New Passphrase Ideas",
     actionStepsTitle: "Actionable Improvement Steps",
   },
-  quiz: {
-    title: "Cybersecurity Quiz",
-    subtitle: "Interactive bilingual security training covering passwords, phishing, MFA, and network defense.",
-    allCategories: "All Domains",
-    startQuiz: "Start / Restart Quiz",
-    nextQuestion: "Next Question",
-    finishQuiz: "View Final Score",
-    correct: "Correct!",
-    incorrect: "Incorrect",
-    streak: "Current Streak",
-    completedTitle: "Assessment Complete",
-  },
   achievements: {
     title: "Achievements",
-    subtitle: "Earn verifiable local badges by auditing credentials, spotting threats, and completing training.",
+    subtitle:
+      "Earn verifiable local badges by auditing credentials, generating CSPRNG secrets, and spotting phishing threats.",
     unlocked: "Unlocked",
     locked: "In Progress",
   },
-  leaderboard: {
-    title: "Leaderboard",
-    subtitle: "Compare your real local XP and quiz accuracy against clearly labeled Demo Community learners.",
-    demoBanner:
-      "Community peers marked [DEMO] are simulated benchmark profiles because SecureCheck runs privately without a central multiplayer server.",
-    rank: "Rank",
-    learner: "Learner",
-    accuracy: "Accuracy",
-    streak: "Streak",
-  },
   settings: {
     title: "Settings",
-    subtitle: "Manage appearance, English/Hindi language, local profile alias, and privacy storage controls.",
+    subtitle:
+      "Manage appearance, English/Hindi language, local profile alias, and privacy storage controls.",
     appearanceCard: "Appearance & Localization",
+    themeLabel: "Theme",
     profileCard: "Local Operator Profile",
+    displayNameLabel: "Display Name",
+    roleTitleLabel: "Role / Track",
     privacyCard: "Privacy & Data Controls",
+    persistActivityTitle: "Persist Local Activity Timeline",
+    persistActivityDesc:
+      "Stores audit counts & security timeline in browser localStorage only.",
+    strictModeTitle: "Strict Analyzer Baseline (12+ chars)",
+    strictModeDesc:
+      "Enforce 12-character minimum threshold instead of 8 characters.",
+    clipboardTimerLabel: "Clipboard Auto-Clear Timer",
     dangerZone: "Reset Local Data",
+    resetWarning:
+      "Resetting clears all locally stored XP, hygiene checklist items, and activity history from this browser.",
     saveProfile: "Save Profile",
     saved: "Saved!",
   },

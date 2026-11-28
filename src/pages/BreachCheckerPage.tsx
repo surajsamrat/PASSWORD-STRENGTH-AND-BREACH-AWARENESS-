@@ -34,7 +34,8 @@ const IDLE_RESULT: PasswordBreachResult = {
 };
 
 export const BreachCheckerPage: React.FC = () => {
-  const { t, language, recordBreachCheck, updateSessionBreachStatus } = useApp();
+  const { t, language, recordBreachCheck, updateSessionBreachStatus, setBreachContext } =
+    useApp();
 
   // Password k-Anonymity state (held in memory only, cleared on unmount)
   const [password, setPassword] = useState("");
@@ -51,8 +52,16 @@ export const BreachCheckerPage: React.FC = () => {
       setPassword("");
       setShowPw(false);
       setPwResult(IDLE_RESULT);
+      setBreachContext(undefined);
     };
-  }, []);
+  }, [setBreachContext]);
+
+  useEffect(() => {
+    setBreachContext({
+      status: pwResult.status,
+      count: pwResult.count,
+    });
+  }, [pwResult.status, pwResult.count, setBreachContext]);
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
@@ -106,7 +115,7 @@ export const BreachCheckerPage: React.FC = () => {
         badge={
           <Badge variant="default">
             <Radar className="h-3 w-3" />
-            k-Anonymity SHA-1
+            {t.breach.badgeLabel}
           </Badge>
         }
       />
@@ -123,11 +132,11 @@ export const BreachCheckerPage: React.FC = () => {
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-emerald-500" />
+                  <Lock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   {t.breach.pwInputLabel}
                 </CardTitle>
                 <Badge variant="emerald" className="font-mono text-[10px]">
-                  5-Char Prefix Only • No Hash Storage
+                  {t.breach.prefixOnlyPill}
                 </Badge>
               </div>
             </CardHeader>
@@ -154,7 +163,9 @@ export const BreachCheckerPage: React.FC = () => {
                       size="icon"
                       onClick={() => setShowPw((s) => !s)}
                       className="h-8 w-8"
-                      aria-label={showPw ? "Hide password" : "Show password"}
+                      aria-label={
+                        showPw ? t.analyzer.hidePasswordAria : t.analyzer.showPasswordAria
+                      }
                     >
                       {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
@@ -165,7 +176,7 @@ export const BreachCheckerPage: React.FC = () => {
                         size="icon"
                         onClick={handleClear}
                         className="h-8 w-8"
-                        aria-label="Clear input"
+                        aria-label={t.common.clear}
                       >
                         <Eraser className="h-4 w-4" />
                       </Button>
@@ -189,14 +200,10 @@ export const BreachCheckerPage: React.FC = () => {
               {pwResult.status === "checking" && (
                 <div
                   aria-busy="true"
-                  className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 flex items-center gap-3 text-sm text-sky-400"
+                  className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 flex items-center gap-3 text-sm text-sky-600 dark:text-sky-400"
                 >
                   <Loader2 className="h-5 w-5 animate-spin shrink-0" />
-                  <span>
-                    {language === "hi"
-                      ? "स्थानीय SHA-1 गणना हो रही है और केवल 5-अक्षर प्रीफ़िक्स से HIBP रेंज जांची जा रही है..."
-                      : "Computing SHA-1 locally and querying HIBP range with 5-character prefix..."}
-                  </span>
+                  <span>{t.breach.checkingMsg}</span>
                 </div>
               )}
 
@@ -208,7 +215,7 @@ export const BreachCheckerPage: React.FC = () => {
                       <span>{t.breach.pwnedAlert}</span>
                     </div>
                     <Badge variant="destructive" className="font-mono">
-                      {pwResult.count.toLocaleString()} occurrences
+                      {pwResult.count.toLocaleString()} {t.breach.occurrencesUnit}
                     </Badge>
                   </div>
 
@@ -219,17 +226,17 @@ export const BreachCheckerPage: React.FC = () => {
                   </p>
 
                   <p className="text-xs font-mono text-muted-foreground">
-                    SHA-1 Prefix Sent: {pwResult.prefix} • Range Suffixes Checked:{" "}
+                    {t.breach.prefixSentLabel}: {pwResult.prefix} • {t.breach.rangeCheckedLabel}:{" "}
                     {pwResult.rangeEntriesChecked ?? 0}
                     {pwResult.paddedEntriesIgnored
-                      ? ` (${pwResult.paddedEntriesIgnored} zero-count padded entries ignored)`
+                      ? ` (${pwResult.paddedEntriesIgnored} ${t.breach.paddedIgnoredLabel})`
                       : ""}
                   </p>
 
                   {activeRecommendations && (
                     <div className="pt-2 border-t border-destructive/25 space-y-2">
                       <p className="text-xs font-bold uppercase tracking-wider text-destructive">
-                        {language === "hi" ? "सुरक्षा सुझाव" : "Security Recommendations"}
+                        {t.breach.recommendationsHeading}
                       </p>
                       <ul className="space-y-1.5 text-xs sm:text-sm">
                         {activeRecommendations.map((rec, i) => (
@@ -255,12 +262,12 @@ export const BreachCheckerPage: React.FC = () => {
               {pwResult.status === "clean" && (
                 <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-emerald-500 font-bold">
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
                       <CheckCircle2 className="h-5 w-5" />
                       <span>{t.breach.cleanAlert}</span>
                     </div>
                     <Badge variant="emerald" className="font-mono">
-                      0 occurrences
+                      0 {t.breach.occurrencesUnit}
                     </Badge>
                   </div>
 
@@ -271,17 +278,17 @@ export const BreachCheckerPage: React.FC = () => {
                   </p>
 
                   <p className="text-xs font-mono text-muted-foreground">
-                    SHA-1 Prefix Sent: {pwResult.prefix} • Range Suffixes Checked:{" "}
+                    {t.breach.prefixSentLabel}: {pwResult.prefix} • {t.breach.rangeCheckedLabel}:{" "}
                     {pwResult.rangeEntriesChecked ?? 0}
                     {pwResult.paddedEntriesIgnored
-                      ? ` (${pwResult.paddedEntriesIgnored} zero-count padded entries ignored)`
+                      ? ` (${pwResult.paddedEntriesIgnored} ${t.breach.paddedIgnoredLabel})`
                       : ""}
                   </p>
 
                   {activeRecommendations && (
                     <div className="pt-2 border-t border-emerald-500/25 space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-500">
-                        {language === "hi" ? "सुरक्षा सुझाव" : "Security Recommendations"}
+                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        {t.breach.recommendationsHeading}
                       </p>
                       <ul className="space-y-1.5 text-xs sm:text-sm">
                         {activeRecommendations.map((rec, i) => (
@@ -309,20 +316,18 @@ export const BreachCheckerPage: React.FC = () => {
                   role="alert"
                   className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-4 space-y-1.5"
                 >
-                  <div className="flex items-center gap-2 text-amber-500 font-bold">
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold">
                     <WifiOff className="h-5 w-5" />
-                    <span>
-                      {language === "hi"
-                        ? "लाइव API जांच विफल रही"
-                        : "Live API Request Failed"}
-                    </span>
+                    <span>{t.breach.errorHeading}</span>
                   </div>
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    {pwResult.errorMessage} — SecureCheck does not fake a "clean" response when the network is unreachable or returns an invalid payload.
+                    {pwResult.errorMessage?.toLowerCase().includes("invalid response")
+                      ? t.errors.HIBP_INVALID_RESPONSE
+                      : t.errors.HIBP_NETWORK_ERROR}
                   </p>
                   {pwResult.prefix && (
                     <p className="text-xs font-mono text-muted-foreground">
-                      Computed Local SHA-1 Prefix: {pwResult.prefix}
+                      {t.breach.computedPrefixLabel}: {pwResult.prefix}
                     </p>
                   )}
                 </div>
@@ -360,7 +365,9 @@ export const BreachCheckerPage: React.FC = () => {
               </form>
 
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="text-muted-foreground self-center">Demo profiles:</span>
+                <span className="text-muted-foreground self-center">
+                  {t.breach.demoProfilesLabel}
+                </span>
                 {Object.keys(DEMO_EMAIL_BREACH_PROFILES).map((sampleEmail) => (
                   <Button
                     key={sampleEmail}
@@ -382,9 +389,7 @@ export const BreachCheckerPage: React.FC = () => {
                 <div className="space-y-3 pt-2">
                   {emailBreaches.length === 0 ? (
                     <div className="rounded-xl border border-border/80 bg-secondary/40 p-4 text-sm text-muted-foreground">
-                      No simulated demo records exist for{" "}
-                      <strong className="font-mono">{checkedEmail}</strong>. Select one of
-                      the Demo profiles above to inspect sample breach telemetry.
+                      {t.breach.noDemoRecords} (<strong className="font-mono">{checkedEmail}</strong>)
                     </div>
                   ) : (
                     emailBreaches.map((b) => (

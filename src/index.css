@@ -54,9 +54,21 @@
     @apply border-border;
   }
 
+  html {
+    transition: background-color 220ms ease, color 220ms ease;
+  }
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased transition-colors duration-200;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html,
+    body,
+    .cyber-card {
+      transition: none !important;
+    }
   }
 }
 
